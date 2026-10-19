@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Delete your Employee Voice India account</title>
+  <link rel="stylesheet" href="/site.css">
+</head>
+<body>
+  <main>
+    <p class="banner">Draft page for a public account-deletion route. This is not a government service and not a trade union.</p>
+    <h1>Delete your account</h1>
+    <p>Use this page if you cannot open the Android app. Enter the email on the account. If an account exists, you will receive a confirmation link. The link does not appear on this page, so it is not written into server logs as a query string.</p>
+    <p>Deleting the account removes the sign-in address, profile, posts, comments, and any organizing-interest record. It does not require you to contact an employer. Organizing interest is not union membership.</p>
+    <form id="request-form">
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" autocomplete="email" required>
+      <button type="submit">Email me a confirmation link</button>
+    </form>
+    <form id="confirm-form" hidden>
+      <p>Confirm deletion for this account. This cannot be undone from the app.</p>
+      <button type="submit">Delete the account</button>
+    </form>
+    <p id="status" role="status"></p>
+  </main>
+  <script src="/account-delete.js"></script>
+</body>
+</html>

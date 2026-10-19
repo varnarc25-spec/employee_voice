@@ -1,0 +1,90 @@
+name: employee-voice
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-employee_voice}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-employee_voice}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-employee_voice} -d ${POSTGRES_DB:-employee_voice}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.api
+    environment:
+      NODE_ENV: development
+      PORT: 8080
+      DATABASE_URL: postgres://${POSTGRES_USER:-employee_voice}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-employee_voice}
+      JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY}
+      PHONE_OTP_PROVIDER: development
+      PUBLIC_BASE_URL: http://localhost:5080
+      ADMIN_BASE_URL: http://localhost:5173
+      DATABASE_MIGRATE: "true"
+      SEED_DEMO: "true"
+      SEED_DEMO_ADMIN_EMAIL: ${SEED_DEMO_ADMIN_EMAIL:-}
+      CORS_ORIGINS: http://localhost:5173
+    ports:
+      - "127.0.0.1:5080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  admin:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.admin
+      args:
+        VITE_API_BASE_URL: http://localhost:5080
+    ports:
+      - "127.0.0.1:5173:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  nest-api:
+    profiles: ["phase1"]
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.nest
+    environment:
+      PORT: 5081
+    ports:
+      - "127.0.0.1:5081:5081"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5081/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    profiles: ["phase1"]
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.web
+    environment:
+      PORT: 3000
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

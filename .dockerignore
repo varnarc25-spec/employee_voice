@@ -1,0 +1,13 @@
+**/.git
+**/.local
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/.next
+mobile
+**/.env
+**/*.jks
+**/*.keystore
+**/*service-account*.json
+**/google-services.json

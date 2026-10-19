@@ -1,0 +1,13 @@
+{
+  "name": "employee-voice",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix backend/node",
+    "test": "npm test --prefix backend/node",
+    "build": "npm run build --prefix backend/node",
+    "dev:nest": "npm run dev --prefix apps/api",
+    "dev:web": "npm run dev --prefix apps/web",
+    "test:phase1": "npm test --prefix apps/api && npm test --prefix backend/node",
+    "build:phase1": "npm run build --prefix apps/api && npm run build --prefix apps/web && npm run build --prefix admin && npm run build --prefix backend/node"
+  }
+}

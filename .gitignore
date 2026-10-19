@@ -1,0 +1,36 @@
+# Secrets and local state
+.env
+.env.*
+!.env.example
+**/.local/
+**/appsettings.Local.json
+**/*service-account*.json
+**/google-services.json
+**/GoogleService-Info.plist
+**/key.properties
+**/*.jks
+**/*.keystore
+
+# .NET
+**/bin/
+**/obj/
+**/.vs/
+*.user
+
+# Node
+**/node_modules/
+**/dist/
+**/.next/
+
+# Flutter
+mobile/.dart_tool/
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/**/GeneratedPluginRegistrant.java
+mobile/coverage/
+
+# OS
+.DS_Store

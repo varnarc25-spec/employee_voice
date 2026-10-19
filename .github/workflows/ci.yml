@@ -1,0 +1,85 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Format
+        working-directory: backend
+        run: dotnet format --verify-no-changes --verbosity diagnostic
+      - name: Test
+        working-directory: backend
+        run: dotnet test --nologo
+
+  node-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/node/package-lock.json
+      - name: Test
+        working-directory: backend/node
+        run: |
+          npm ci
+          npm test
+          npm run build
+
+  admin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+      - name: Build
+        working-directory: admin
+        run: |
+          npm ci
+          npm run build
+
+  phase1:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: NestJS skeleton
+        working-directory: apps/api
+        run: |
+          npm ci
+          npm test
+          npm run build
+      - name: Next.js skeleton
+        working-directory: apps/web
+        run: |
+          npm ci
+          npm run build
+
+  mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.7
+          channel: stable
+      - name: Test
+        working-directory: mobile
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
