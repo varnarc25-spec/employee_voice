@@ -93,9 +93,16 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
+class _PlaceOption {
+  const _PlaceOption(this.code, this.name);
+  final int code;
+  final String name;
+}
+
 class _ProfileScreenState extends State<ProfileScreen> {
   final _name = TextEditingController();
   final _city = TextEditingController();
+  final _villageSearch = TextEditingController();
   String _experience = "unspecified";
   String _industry = "unspecified";
   bool _loading = true;
@@ -103,6 +110,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _verification = "unverified";
   List<Map<String, dynamic>> _sessions = [];
   final _delete = TextEditingController();
+  List<_PlaceOption> _states = [];
+  List<_PlaceOption> _districts = [];
+  List<_PlaceOption> _subDistricts = [];
+  List<_PlaceOption> _villages = [];
+  int? _stateCode;
+  int? _districtCode;
+  int? _subDistrictCode;
+  int? _villageCode;
+  String? _villageName;
+  String? _electionSummary;
+  List<String> _nominees = [];
+  bool _electionMatched = false;
+  bool _electionLoading = false;
 
   @override
   void initState() {
@@ -114,6 +134,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void dispose() {
     _name.dispose();
     _city.dispose();
+    _villageSearch.dispose();
     _delete.dispose();
     super.dispose();
   }
@@ -127,13 +148,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final me = await state.client.get("/api/v1/me", bearer: state.access);
       final profile = me["profile"] as Map<String, dynamic>? ?? {};
+      final location = profile["location"] as Map<String, dynamic>? ?? {};
       final verification = me["verification"] as Map<String, dynamic>? ?? {};
       final sessions = await state.client.get("/api/v1/me/sessions", bearer: state.access);
+      final states = await state.client.get("/api/v1/locations/states", bearer: state.access);
+      if (!mounted) return;
+      _name.text = profile["displayName"] as String? ?? "";
+      _city.text = profile["city"] as String? ?? "";
+      _experience = profile["experienceBand"] as String? ?? _experience;
+      _industry = profile["industry"] as String? ?? _industry;
+      _stateCode = location["stateCode"] as int?;
+      _districtCode = location["districtCode"] as int?;
+      _subDistrictCode = location["subDistrictCode"] as int?;
+      _villageCode = location["villageCode"] as int?;
+      _villageName = location["villageName"] as String?;
+      _states = _places(states);
+      if (_stateCode != null) await _loadDistricts(keepChildren: true);
+      if (_districtCode != null) await _loadSubDistricts(keepChildren: true);
+      if (_subDistrictCode != null) await _loadVillages();
+      if (_villageCode != null) await _loadElection();
       if (mounted) {
-        _name.text = profile["displayName"] as String? ?? "";
-        _city.text = profile["city"] as String? ?? "";
-        _experience = profile["experienceBand"] as String? ?? _experience;
-        _industry = profile["industry"] as String? ?? _industry;
         setState(() {
           _verification = verification["status"] as String? ?? "unverified";
           _sessions = (sessions["items"] as List? ?? []).cast<Map<String, dynamic>>();
@@ -146,19 +180,159 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  List<_PlaceOption> _places(Map<String, dynamic> body) {
+    final items = (body["items"] as List? ?? []).cast<Map<String, dynamic>>();
+    return items.map((item) => _PlaceOption(item["lgdCode"] as int, item["nameEn"] as String)).toList();
+  }
+
+  Future<void> _loadDistricts({bool keepChildren = false}) async {
+    final state = AppScope.of(context);
+    if (!keepChildren) {
+      _districtCode = null;
+      _subDistrictCode = null;
+      _villageCode = null;
+      _villageName = null;
+      _electionSummary = null;
+      _nominees = [];
+      _electionMatched = false;
+      _subDistricts = [];
+      _villages = [];
+    }
+    if (_stateCode == null) {
+      _districts = [];
+      return;
+    }
+    final body = await state.client.get("/api/v1/locations/districts?stateCode=$_stateCode", bearer: state.access);
+    _districts = _places(body);
+  }
+
+  Future<void> _loadSubDistricts({bool keepChildren = false}) async {
+    final state = AppScope.of(context);
+    if (!keepChildren) {
+      _subDistrictCode = null;
+      _villageCode = null;
+      _villageName = null;
+      _electionSummary = null;
+      _nominees = [];
+      _electionMatched = false;
+      _villages = [];
+    }
+    if (_districtCode == null) {
+      _subDistricts = [];
+      return;
+    }
+    final body = await state.client.get("/api/v1/locations/sub-districts?districtCode=$_districtCode", bearer: state.access);
+    _subDistricts = _places(body);
+  }
+
+  Future<void> _loadVillages() async {
+    final state = AppScope.of(context);
+    if (_subDistrictCode == null) {
+      _villages = [];
+      return;
+    }
+    final query = _villageSearch.text.trim();
+    final path = query.isEmpty
+        ? "/api/v1/locations/villages?subDistrictCode=$_subDistrictCode"
+        : "/api/v1/locations/villages?subDistrictCode=$_subDistrictCode&q=${Uri.encodeQueryComponent(query)}";
+    final body = await state.client.get(path, bearer: state.access);
+    final villages = _places(body);
+    if (_villageCode != null && _villageName != null && villages.every((item) => item.code != _villageCode)) {
+      villages.insert(0, _PlaceOption(_villageCode!, _villageName!));
+    }
+    _villages = villages;
+  }
+
+  Future<void> _loadElection() async {
+    if (_villageCode == null) {
+      _electionSummary = null;
+      _nominees = [];
+      _electionMatched = false;
+      return;
+    }
+    final state = AppScope.of(context);
+    if (mounted) setState(() => _electionLoading = true);
+    try {
+      final body = await state.client.get("/api/v1/locations/villages/$_villageCode/election", bearer: state.access);
+      if (!mounted) return;
+      if (body["matched"] == true) {
+        final party = body["party"] as String?;
+        final partyLabel = party == null || party.isEmpty ? "" : " ($party)";
+        _electionMatched = true;
+        _electionSummary = "${body["election"]}\n${body["constituencyName"]}\nWon by ${body["winner"]}$partyLabel";
+        final people = (body["nominees"] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
+        _nominees = people.map((person) {
+          final name = person["name"] as String? ?? "";
+          final nomineeParty = person["party"] as String?;
+          final votes = person["votes"];
+          final partyText = nomineeParty == null || nomineeParty.isEmpty ? "" : " ($nomineeParty)";
+          final voteText = votes is num ? " · $votes votes" : "";
+          return "$name$partyText$voteText";
+        }).where((line) => line.trim().isNotEmpty).toList();
+      } else {
+        _electionMatched = false;
+        _electionSummary = body["message"] as String? ?? "No election result for this village.";
+        _nominees = [];
+      }
+    } catch (error) {
+      if (!mounted) return;
+      _electionMatched = false;
+      _nominees = [];
+      _electionSummary = error.toString();
+    } finally {
+      _electionLoading = false;
+    }
+  }
+
   Future<void> _save() async {
     if (FormRules.displayName(_name.text) != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(FormRules.displayName(_name.text)!)));
       return;
     }
+    final picked = [_stateCode, _districtCode, _subDistrictCode, _villageCode];
+    if (picked.any((code) => code != null) && picked.any((code) => code == null)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Choose a state, district, sub-district, and village.")));
+      return;
+    }
     final state = AppScope.of(context);
-    await state.client.put("/api/v1/me/profile", {
-      "displayName": _name.text.trim(),
-      "city": _city.text.trim().isEmpty ? null : _city.text.trim(),
-      "experienceBand": _experience,
-      "industry": _industry,
-    }, bearer: state.access);
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Profile saved.")));
+    try {
+      await state.client.put("/api/v1/me/profile", {
+        "displayName": _name.text.trim(),
+        "city": _city.text.trim().isEmpty ? null : _city.text.trim(),
+        "experienceBand": _experience,
+        "industry": _industry,
+        "stateCode": _stateCode,
+        "districtCode": _districtCode,
+        "subDistrictCode": _subDistrictCode,
+        "villageCode": _villageCode,
+      }, bearer: state.access);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Profile saved.")));
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
+  Widget _placeDropdown({
+    required String label,
+    required int? value,
+    required List<_PlaceOption> options,
+    required ValueChanged<int?> onChanged,
+  }) {
+    if (options.isEmpty) {
+      return InputDecorator(
+        decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()),
+        child: const Text("Choose the level above first"),
+      );
+    }
+    final selected = options.any((option) => option.code == value) ? value : null;
+    return DropdownButtonFormField<int>(
+      key: ValueKey("$label-$selected-${options.length}"),
+      initialValue: selected,
+      isExpanded: true,
+      decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()),
+      items: [for (final option in options) DropdownMenuItem(value: option.code, child: Text(option.name))],
+      onChanged: options.isEmpty ? null : onChanged,
+    );
   }
 
   Future<void> _deleteAccount() async {
@@ -219,6 +393,93 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
               onChanged: (value) => setState(() => _industry = value ?? _industry),
             ),
+            const SizedBox(height: 16),
+            const Text("Location"),
+            const SizedBox(height: 8),
+            _placeDropdown(
+              label: "State",
+              value: _stateCode,
+              options: _states,
+              onChanged: (value) async {
+                setState(() => _stateCode = value);
+                await _loadDistricts();
+                if (mounted) setState(() {});
+              },
+            ),
+            const SizedBox(height: 12),
+            _placeDropdown(
+              label: "District",
+              value: _districtCode,
+              options: _districts,
+              onChanged: (value) async {
+                setState(() => _districtCode = value);
+                await _loadSubDistricts();
+                if (mounted) setState(() {});
+              },
+            ),
+            const SizedBox(height: 12),
+            _placeDropdown(
+              label: "Sub-district",
+              value: _subDistrictCode,
+              options: _subDistricts,
+              onChanged: (value) async {
+                setState(() {
+                  _subDistrictCode = value;
+                  _villageCode = null;
+                  _villageName = null;
+                  _electionSummary = null;
+                  _nominees = [];
+                  _electionMatched = false;
+                  _villageSearch.clear();
+                });
+                await _loadVillages();
+                if (mounted) setState(() {});
+              },
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _villageSearch,
+              decoration: const InputDecoration(labelText: "Search villages", border: OutlineInputBorder()),
+              onSubmitted: (_) async {
+                await _loadVillages();
+                if (mounted) setState(() {});
+              },
+            ),
+            const SizedBox(height: 12),
+            _placeDropdown(
+              label: "Village",
+              value: _villageCode,
+              options: _villages,
+              onChanged: (value) async {
+                final match = _villages.where((item) => item.code == value);
+                setState(() {
+                  _villageCode = value;
+                  _villageName = match.isEmpty ? null : match.first.name;
+                  _electionSummary = null;
+                  _nominees = [];
+                  _electionMatched = false;
+                });
+                await _loadElection();
+                if (mounted) setState(() {});
+              },
+            ),
+            if (_electionLoading) const Padding(padding: EdgeInsets.only(top: 12), child: Text("Looking up the latest election…")),
+            if (!_electionLoading && _electionSummary != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_electionSummary!),
+                    if (_electionMatched && _nominees.isEmpty)
+                      const Padding(padding: EdgeInsets.only(top: 8), child: Text("Nominee names are not stored for this election.")),
+                    if (_nominees.isNotEmpty) ...[
+                      const Padding(padding: EdgeInsets.only(top: 8), child: Text("Nominated")),
+                      for (final person in _nominees) Text(person),
+                    ],
+                  ],
+                ),
+              ),
             const SizedBox(height: 12),
             FilledButton(onPressed: _save, child: const Text("Save profile")),
             const Divider(height: 32),

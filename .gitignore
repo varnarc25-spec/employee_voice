@@ -6,6 +6,7 @@
 **/appsettings.Local.json
 **/*service-account*.json
 **/google-services.json
+**/client_secret_*.json
 **/GoogleService-Info.plist
 **/key.properties
 **/*.jks
@@ -31,6 +32,9 @@ mobile/android/.gradle/
 mobile/android/local.properties
 mobile/android/**/GeneratedPluginRegistrant.java
 mobile/coverage/
+
+# Downloaded Election Commission spreadsheets
+election_data/
 
 # OS
 .DS_Store

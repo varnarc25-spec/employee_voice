@@ -1,6 +1,14 @@
 import crypto from "node:crypto";
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { config, signingKey } from "./config.js";
+
+/** Only this mailbox may hold the administrator role. */
+export const SUPER_ADMIN_EMAIL = "business@varnarc.com";
+
+export function isSuperAdminEmail(email: string | null | undefined): boolean {
+  return (email ?? "").trim().toLowerCase() === SUPER_ADMIN_EMAIL;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -130,6 +138,15 @@ export const legal = {
   minPollCohort: 5,
   workEmailDisclaimer: "A work-email check shows control of an inbox at an allowlisted domain. It does not prove current employment.",
 };
+
+export function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 12);
+}
+
+export function verifyPassword(password: string, stored: string): Promise<boolean> {
+  if (!stored.startsWith("$2")) return Promise.resolve(false);
+  return bcrypt.compare(password, stored);
+}
 
 export function pollResultsVisible(status: string, ballotCount: number, minCohort: number): boolean {
   return status === "Closed" && ballotCount >= Math.max(minCohort, legal.minPollCohort);

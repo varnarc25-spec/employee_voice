@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { config } from "./config.js";
 import { one, query } from "./db.js";
-import { legal, sha256 } from "./security.js";
+import { hashPassword, legal, sha256, SUPER_ADMIN_EMAIL } from "./security.js";
 
 export async function seedDevelopment(): Promise<void> {
   if (config.nodeEnv === "production") return;
@@ -61,6 +61,41 @@ export async function seedDevelopment(): Promise<void> {
     );
   }
 
+  await query(
+    `DELETE FROM admin_roles
+     WHERE role = 'Administrator'
+       AND user_id NOT IN (SELECT id FROM users WHERE email = $1)`,
+    [SUPER_ADMIN_EMAIL],
+  );
+  await query("UPDATE users SET login_name = NULL, password_hash = NULL, updated_at = now() WHERE email = 'admin@example.com'");
+
+  if (config.adminBootstrapPassword) {
+    let superAdmin = await one<{ id: string; password_hash: string | null }>(
+      "SELECT id, password_hash FROM users WHERE email = $1 AND status <> 'Deleted'",
+      [SUPER_ADMIN_EMAIL],
+    );
+    const needsHash = !superAdmin?.password_hash || !superAdmin.password_hash.startsWith("$2");
+    const hash = needsHash ? await hashPassword(config.adminBootstrapPassword) : null;
+    if (!superAdmin) {
+      const id = crypto.randomUUID();
+      await query(
+        "INSERT INTO users (id, email, password_hash, status, created_at, updated_at) VALUES ($1, $2, $3, 'Active', now(), now())",
+        [id, SUPER_ADMIN_EMAIL, hash],
+      );
+      await query(
+        "INSERT INTO employee_profiles (id, user_id, display_name, experience_band, industry, created_at, updated_at) VALUES ($1, $2, 'Super Admin', 'Unspecified', 'Unspecified', now(), now())",
+        [crypto.randomUUID(), id],
+      );
+      await query("INSERT INTO notification_preferences (user_id, updated_at) VALUES ($1, now())", [id]);
+      superAdmin = { id, password_hash: hash };
+    } else if (hash) {
+      await query("UPDATE users SET password_hash = $2, status = 'Active', updated_at = now() WHERE id = $1", [superAdmin.id, hash]);
+    }
+    for (const role of ["VerificationReviewer", "Moderator", "Administrator"]) {
+      await query("INSERT INTO admin_roles (id, user_id, role, granted_at) VALUES ($1, $2, $3, now()) ON CONFLICT DO NOTHING", [crypto.randomUUID(), superAdmin.id, role]);
+    }
+  }
+
   if (!config.seedAdminEmail) return;
   let admin = await one<{ id: string }>("SELECT id FROM users WHERE email = $1 AND status <> 'Deleted'", [config.seedAdminEmail]);
   if (!admin) {
@@ -70,7 +105,8 @@ export async function seedDevelopment(): Promise<void> {
     await query("INSERT INTO notification_preferences (user_id, updated_at) VALUES ($1, now())", [id]);
     admin = { id };
   }
-  for (const role of ["VerificationReviewer", "Moderator", "Administrator"]) {
+  if (config.seedAdminEmail === SUPER_ADMIN_EMAIL) return;
+  for (const role of ["VerificationReviewer", "Moderator"]) {
     await query("INSERT INTO admin_roles (id, user_id, role, granted_at) VALUES ($1, $2, $3, now()) ON CONFLICT DO NOTHING", [crypto.randomUUID(), admin.id, role]);
   }
 }

@@ -4,6 +4,7 @@ import "package:go_router/go_router.dart";
 import "core/app_state.dart";
 import "screens/account_screens.dart";
 import "screens/auth_screens.dart";
+import "screens/explore_screen.dart";
 import "screens/feed_screens.dart";
 import "screens/involved_screen.dart";
 import "screens/polls_screen.dart";
@@ -35,7 +36,7 @@ class _EmployeeVoiceAppState extends State<EmployeeVoiceApp> {
       final location = route.matchedLocation;
       final guestEntry = location == "/welcome" || location == "/sign-in";
       final publicInfo = location == "/community-notice" || location.startsWith("/legal/");
-      if (!widget.state.signedIn && !guestEntry && !publicInfo) return "/welcome";
+      if (!widget.state.signedIn && !guestEntry && !publicInfo) return "/sign-in";
       if (widget.state.signedIn && guestEntry) return "/feed";
       return null;
     },
@@ -51,6 +52,7 @@ class _EmployeeVoiceAppState extends State<EmployeeVoiceApp> {
         builder: (context, state, child) => AppShell(child: child),
         routes: [
           GoRoute(path: "/feed", builder: (context, state) => const FeedScreen()),
+          GoRoute(path: "/explore", builder: (context, state) => const ExploreScreen()),
           GoRoute(path: "/compose", builder: (context, state) => const ComposeScreen()),
           GoRoute(
             path: "/posts/:id",
@@ -84,8 +86,10 @@ class _EmployeeVoiceAppState extends State<EmployeeVoiceApp> {
       child: MaterialApp.router(
         title: "Employee Voice India",
         theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1E4D5A)),
-          scaffoldBackgroundColor: const Color(0xFFF4F1EA),
+          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2F6BFF), brightness: Brightness.light).copyWith(surface: Colors.white),
+          scaffoldBackgroundColor: Colors.white,
+          appBarTheme: const AppBarTheme(backgroundColor: Colors.white, surfaceTintColor: Colors.white, elevation: 0),
+          navigationBarTheme: const NavigationBarThemeData(backgroundColor: Colors.white, surfaceTintColor: Colors.white),
           useMaterial3: true,
           filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(minimumSize: const Size(48, 48))),
         ),

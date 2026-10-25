@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ensurePublishable, normalizeIndiaPhone, pollResultsVisible, readMagic, signMagic } from "../src/security.ts";
+import { ensurePublishable, hashPassword, normalizeIndiaPhone, pollResultsVisible, readMagic, signMagic, verifyPassword } from "../src/security.ts";
 
 test("Indian mobile numbers normalize to E.164", () => {
   assert.equal(normalizeIndiaPhone("9876543210"), "+919876543210");
@@ -20,6 +20,14 @@ test("poll results stay hidden until the poll is closed and at least 5 ballots e
   assert.equal(pollResultsVisible("Closed", 4, 5), false);
   assert.equal(pollResultsVisible("Closed", 4, 1), false);
   assert.equal(pollResultsVisible("Closed", 5, 5), true);
+});
+
+test("password hashes match only the same password", async () => {
+  const hash = await hashPassword("change-me-strong-bootstrap-password");
+  assert.equal(await verifyPassword("change-me-strong-bootstrap-password", hash), true);
+  assert.equal(await verifyPassword("wrong-password", hash), false);
+  assert.equal(await verifyPassword("change-me-strong-bootstrap-password", "not-a-hash"), false);
+  assert.match(hash, /^\$2[aby]\$/);
 });
 
 test("magic links round-trip and reject the wrong purpose", () => {

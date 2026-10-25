@@ -16,17 +16,32 @@ class ApiClient {
   final String baseUrl;
   final http.Client _http;
 
-  Future<Map<String, dynamic>> get(String path, {String? bearer}) => _send("GET", path, bearer: bearer);
+  /// Returns a replacement access token after a 401, or null when the session is gone.
+  Future<String?> Function()? onUnauthorized;
 
-  Future<Map<String, dynamic>> post(String path, Object? body, {String? bearer}) => _send("POST", path, body: body, bearer: bearer);
+  Future<Map<String, dynamic>> get(String path, {String? bearer, bool allowRefresh = true}) => _send("GET", path, bearer: bearer, allowRefresh: allowRefresh);
 
-  Future<Map<String, dynamic>> put(String path, Object? body, {String? bearer}) => _send("PUT", path, body: body, bearer: bearer);
+  Future<Map<String, dynamic>> post(String path, Object? body, {String? bearer, bool allowRefresh = true}) => _send("POST", path, body: body, bearer: bearer, allowRefresh: allowRefresh);
 
-  Future<void> delete(String path, {String? bearer}) async {
-    await _send("DELETE", path, bearer: bearer);
+  Future<Map<String, dynamic>> put(String path, Object? body, {String? bearer, bool allowRefresh = true}) => _send("PUT", path, body: body, bearer: bearer, allowRefresh: allowRefresh);
+
+  Future<void> delete(String path, {String? bearer, bool allowRefresh = true}) async {
+    await _send("DELETE", path, bearer: bearer, allowRefresh: allowRefresh);
   }
 
-  Future<Map<String, dynamic>> _send(String method, String path, {Object? body, String? bearer}) async {
+  Future<Map<String, dynamic>> _send(String method, String path, {Object? body, String? bearer, bool allowRefresh = true}) async {
+    try {
+      return await _once(method, path, body: body, bearer: bearer);
+    } on ApiException catch (error) {
+      final refresh = onUnauthorized;
+      if (error.status != 401 || !allowRefresh || bearer == null || refresh == null) rethrow;
+      final next = await refresh();
+      if (next == null || next.isEmpty) rethrow;
+      return _once(method, path, body: body, bearer: next);
+    }
+  }
+
+  Future<Map<String, dynamic>> _once(String method, String path, {Object? body, String? bearer}) async {
     final request = http.Request(method, Uri.parse("$baseUrl$path"));
     request.headers["Accept"] = "application/json";
     if (bearer != null) request.headers["Authorization"] = "Bearer $bearer";

@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
+import "package:url_launcher/url_launcher.dart";
 
 import "../core/api_client.dart";
 import "../core/rules.dart";
@@ -28,6 +29,9 @@ class _FeedScreenState extends State<FeedScreen> {
   bool _loading = true;
   String? _error;
   List<Map<String, dynamic>> _items = [];
+  String? _schemeLabel;
+  String? _schemeUrl;
+  List<Map<String, dynamic>> _logos = [];
 
   @override
   void initState() {
@@ -45,7 +49,32 @@ class _FeedScreenState extends State<FeedScreen> {
       final query = _category == null ? "" : "?category=$_category";
       final body = await state.client.get("/api/v1/posts$query", bearer: state.access);
       final items = (body["items"] as List? ?? []).cast<Map<String, dynamic>>();
-      if (mounted) setState(() => _items = items);
+      String? schemeLabel;
+      String? schemeUrl;
+      try {
+        final scheme = await state.client.get("/api/v1/me/scheme-link", bearer: state.access);
+        final stateName = scheme["stateName"] as String?;
+        schemeUrl = scheme["url"] as String?;
+        schemeLabel = stateName == null || stateName.isEmpty ? "Government schemes" : "Schemes for $stateName";
+      } catch (_) {
+        schemeLabel = null;
+        schemeUrl = null;
+      }
+      List<Map<String, dynamic>> logos = [];
+      try {
+        final logoBody = await state.client.get("/api/v1/portal-logos", bearer: state.access);
+        logos = (logoBody["items"] as List? ?? []).cast<Map<String, dynamic>>();
+      } catch (_) {
+        logos = [];
+      }
+      if (mounted) {
+        setState(() {
+          _items = items;
+          _schemeLabel = schemeLabel;
+          _schemeUrl = schemeUrl;
+          _logos = logos;
+        });
+      }
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
     } finally {
@@ -68,6 +97,83 @@ class _FeedScreenState extends State<FeedScreen> {
       body: Column(
         children: [
           const Padding(padding: EdgeInsets.fromLTRB(16, 12, 16, 0), child: NoticeBanner("Peers see your display name. Moderators and server operators can still access account data.")),
+          if (_logos.isNotEmpty)
+            SizedBox(
+              height: 64,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                itemCount: _logos.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final logo = _logos[index];
+                  final imageUrl = logo["imageUrl"] as String? ?? "";
+                  final link = logo["linkUrl"] as String?;
+                  return Material(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: link == null ? null : () => launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Image.network(
+                          "${AppScope.of(context).client.baseUrl}$imageUrl",
+                          height: 40,
+                          fit: BoxFit.contain,
+                          semanticLabel: logo["altText"] as String? ?? logo["title"] as String? ?? "Portal logo",
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Material(
+              color: const Color(0xFFEEF3F7),
+              borderRadius: BorderRadius.circular(8),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => context.push("/explore"),
+                child: const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Icon(Icons.travel_explore_outlined),
+                      SizedBox(width: 12),
+                      Expanded(child: Text("Explore India")),
+                      Icon(Icons.chevron_right),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (_schemeLabel != null && _schemeUrl != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Material(
+                color: const Color(0xFFEEF3F7),
+                borderRadius: BorderRadius.circular(8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => launchUrl(Uri.parse(_schemeUrl!), mode: LaunchMode.externalApplication),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.account_balance_outlined),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text(_schemeLabel!)),
+                        const Icon(Icons.open_in_new, size: 18),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           SizedBox(
             height: 52,
             child: ListView(

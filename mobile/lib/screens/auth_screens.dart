@@ -1,21 +1,15 @@
-import "dart:convert";
-import "dart:math";
-
-import "package:crypto/crypto.dart";
-import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
-import "package:flutter_web_auth_2/flutter_web_auth_2.dart";
+import "package:flutter/services.dart";
 import "package:go_router/go_router.dart";
 import "package:google_sign_in/google_sign_in.dart";
 
 import "../core/app_state.dart";
-import "../core/rules.dart";
 import "../main.dart";
 
 const _ink = Color(0xFF102B4A);
-const _cta = Color(0xFF00778B);
-const _canvas = Color(0xFFF6F9FC);
-const _muted = Color(0xFF34506A);
+const _cta = Color(0xFF2F6BFF);
+const _canvas = Colors.white;
+const _muted = Color(0xFF6B7280);
 
 TextStyle _poppins({double size = 16, FontWeight weight = FontWeight.w400, Color color = _ink, double height = 1.4}) {
   return TextStyle(fontFamily: "Poppins", fontSize: size, fontWeight: weight, color: color, height: height);
@@ -26,65 +20,60 @@ class WelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final logoSize = (MediaQuery.sizeOf(context).width * 0.42).clamp(148.0, 200.0);
+    final height = MediaQuery.sizeOf(context).height;
+    final compact = height < 760;
+    final logoSize = compact ? 72.0 : 96.0;
     return Scaffold(
       backgroundColor: _canvas,
       body: SafeArea(
-        minimum: const EdgeInsets.only(bottom: 28),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-          children: [
-            const _BrandHeader(),
-            const SizedBox(height: 12),
-            Center(
-              child: Image(
-                image: const AssetImage("assets/brand/logo.png"),
-                height: logoSize,
-                fit: BoxFit.contain,
-                semanticLabel: "Employee Voice India",
+        minimum: const EdgeInsets.only(bottom: 12),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+          child: Column(
+            children: [
+              const _BrandHeader(),
+              SizedBox(height: compact ? 4 : 8),
+              Image(image: const AssetImage("assets/brand/logo.png"), height: logoSize, fit: BoxFit.contain, semanticLabel: "Employee Voice India"),
+              SizedBox(height: compact ? 6 : 8),
+              Text("Your Voice. Your Community.", textAlign: TextAlign.center, style: _poppins(size: compact ? 22 : 24, weight: FontWeight.w700, height: 1.15)),
+              const SizedBox(height: 6),
+              Text(
+                "For taxpaying employees across India. Share concerns, discuss workplace issues, and be heard.",
+                textAlign: TextAlign.center,
+                style: _poppins(size: 13, color: _muted, height: 1.3),
               ),
-            ),
-            const SizedBox(height: 16),
-            Text("Your Voice. Your Community.", textAlign: TextAlign.center, style: _poppins(size: 26, weight: FontWeight.w700, height: 1.2)),
-            const SizedBox(height: 10),
-            Text(
-              "A platform for taxpaying employees across India to share concerns, discuss workplace issues, understand policies that affect them, and make their voices heard.",
-              textAlign: TextAlign.center,
-              style: _poppins(size: 15, color: _muted, height: 1.45),
-            ),
-            const SizedBox(height: 22),
-            const _FeatureRow(icon: Icons.forum_outlined, title: "Speak openly", detail: "Discuss employee rights, workplace challenges, salaries, and taxation."),
-            const _FeatureRow(icon: Icons.how_to_vote_outlined, title: "Make your opinion count", detail: "Participate in polls and share views on issues affecting employees."),
-            const _FeatureRow(icon: Icons.groups_outlined, title: "United employee voice", detail: "Connect with fellow employees across India and raise common concerns."),
-            const SizedBox(height: 8),
-            const _IndependenceNotice(),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: _cta,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(48),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  textStyle: _poppins(size: 16, weight: FontWeight.w600, color: Colors.white, height: 1.2),
+              SizedBox(height: compact ? 8 : 12),
+              const _FeatureRow(icon: Icons.forum_outlined, title: "Speak openly", detail: "Rights, workplace issues, salaries, and taxation."),
+              const _FeatureRow(icon: Icons.how_to_vote_outlined, title: "Make your opinion count", detail: "Polls and views on issues affecting employees."),
+              const _FeatureRow(icon: Icons.groups_outlined, title: "United employee voice", detail: "Connect across India and raise common concerns."),
+              const _IndependenceNotice(),
+              const Spacer(),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _cta,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    textStyle: _poppins(size: 16, weight: FontWeight.w600, color: Colors.white, height: 1.2),
+                  ),
+                  onPressed: () => context.go("/sign-in"),
+                  child: const Text("Continue to sign in"),
                 ),
-                onPressed: () => context.go("/sign-in"),
-                child: const Text("Continue to sign in"),
               ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              alignment: WrapAlignment.center,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                _LegalLink(label: "Community Guidelines", onPressed: () => context.push("/legal/guidelines")),
-                Text("·", style: _poppins(color: _muted)),
-                _LegalLink(label: "Privacy Policy", onPressed: () => context.push("/legal/privacy")),
-              ],
-            ),
-          ],
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  _LegalLink(label: "Community Guidelines", onPressed: () => context.push("/legal/guidelines")),
+                  Text("·", style: _poppins(size: 13, color: _muted)),
+                  _LegalLink(label: "Privacy Policy", onPressed: () => context.push("/legal/privacy")),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -116,24 +105,23 @@ class _FeatureRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(color: const Color(0x1400778B), borderRadius: BorderRadius.circular(12)),
-            child: Icon(icon, color: _cta),
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(color: const Color(0x1400778B), borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, color: _cta, size: 20),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: _poppins(size: 16, weight: FontWeight.w600, height: 1.25)),
-                const SizedBox(height: 2),
-                Text(detail, style: _poppins(size: 14, color: _muted, height: 1.35)),
+                Text(title, style: _poppins(size: 14, weight: FontWeight.w600, height: 1.2)),
+                Text(detail, style: _poppins(size: 12, color: _muted, height: 1.25)),
               ],
             ),
           ),
@@ -150,7 +138,7 @@ class _IndependenceNotice extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -159,18 +147,18 @@ class _IndependenceNotice extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Independent employee community", style: _poppins(size: 15, weight: FontWeight.w600, height: 1.3)),
-          const SizedBox(height: 6),
+          Text("Independent employee community", style: _poppins(size: 13, weight: FontWeight.w600, height: 1.2)),
+          const SizedBox(height: 2),
           Text(
-            "Employee Voice India is an independent platform for employees in India. It is not a government service or registered trade union. Participation does not constitute union membership.",
-            style: _poppins(size: 13, color: _muted, height: 1.45),
+            "It is not a government service or registered trade union. Participation does not constitute union membership.",
+            style: _poppins(size: 12, color: _muted, height: 1.3),
           ),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton(
-              style: TextButton.styleFrom(foregroundColor: _cta, minimumSize: const Size(48, 48), padding: const EdgeInsets.symmetric(horizontal: 0)),
+              style: TextButton.styleFrom(foregroundColor: _cta, minimumSize: const Size(48, 36), padding: EdgeInsets.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
               onPressed: () => context.push("/community-notice"),
-              child: Text("Read the full notice", style: _poppins(size: 14, weight: FontWeight.w600, color: _cta, height: 1.2)),
+              child: Text("Read the full notice", style: _poppins(size: 13, weight: FontWeight.w600, color: _cta, height: 1.2)),
             ),
           ),
         ],
@@ -188,7 +176,7 @@ class _LegalLink extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TextButton(
-      style: TextButton.styleFrom(foregroundColor: _cta, minimumSize: const Size(48, 48)),
+      style: TextButton.styleFrom(foregroundColor: _cta, minimumSize: const Size(48, 40), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
       onPressed: onPressed,
       child: Text(label, style: _poppins(size: 14, weight: FontWeight.w600, color: _cta, height: 1.2)),
     );
@@ -246,197 +234,92 @@ class SignInScreen extends StatefulWidget {
 }
 
 class _SignInScreenState extends State<SignInScreen> {
-  final _form = GlobalKey<FormState>();
-  final _phone = TextEditingController();
-  final _code = TextEditingController();
-  bool _adult = false;
-  bool _terms = false;
   bool _busy = false;
   String? _message;
 
-  @override
-  void dispose() {
-    _phone.dispose();
-    _code.dispose();
-    super.dispose();
-  }
-
-  bool _consent() {
-    if (_adult && _terms) return true;
-    setState(() => _message = "Confirm that you are 18 or older and that you agree to the draft terms.");
-    return false;
-  }
-
-  Future<void> _send(AppState state) async {
-    if (!_consent() || !_form.currentState!.validate()) return;
+  Future<void> _gmail(AppState state) async {
     setState(() {
       _busy = true;
       _message = null;
     });
     try {
-      final message = await state.sendPhoneCode(_phone.text, adult: _adult, terms: _terms);
-      if (mounted) setState(() => _message = message);
-    } catch (error) {
-      if (mounted) setState(() => _message = error.toString());
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _verify(AppState state) async {
-    if (!_consent()) return;
-    if ((_code.text.trim().length) < 4) {
-      setState(() => _message = "Enter the code from the text message.");
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      await state.verifyPhoneCode(_phone.text, _code.text, adult: _adult, terms: _terms);
-    } catch (error) {
-      if (mounted) setState(() => _message = error.toString());
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _developmentCode(AppState state) async {
-    setState(() => _busy = true);
-    try {
-      final code = await state.developmentPhoneCode();
-      if (mounted) {
-        _code.text = code ?? "";
-        setState(() => _message = code == null ? "No development code is waiting." : "Loaded the local development code.");
-      }
-    } catch (error) {
-      if (mounted) setState(() => _message = error.toString());
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _google(AppState state) async {
-    if (!_consent()) return;
-    const serverClientId = String.fromEnvironment("GOOGLE_SERVER_CLIENT_ID");
-    if (serverClientId.isEmpty) {
-      setState(() => _message = "Google sign-in needs GOOGLE_SERVER_CLIENT_ID. See the README.");
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      final account = await GoogleSignIn(serverClientId: serverClientId, scopes: const ["email"]).signIn();
-      final idToken = (await account?.authentication)?.idToken;
-      if (idToken == null) {
+      const serverClientId = String.fromEnvironment(
+        "GOOGLE_SERVER_CLIENT_ID",
+        defaultValue: "414895350436-9nlsdp5spkufv1r5egvb81oncrc6u8eo.apps.googleusercontent.com",
+      );
+      final account = await GoogleSignIn(scopes: const ["email", "profile"], serverClientId: serverClientId).signIn();
+      if (account == null) return;
+      final idToken = (await account.authentication).idToken;
+      if (idToken == null || idToken.isEmpty) {
         if (mounted) setState(() => _message = "Google did not return a sign-in token.");
         return;
       }
-      await state.signInWithGoogle(idToken, adult: _adult, terms: _terms);
+      await state.signInWithGoogle(idToken, adult: true, terms: true);
+    } on PlatformException catch (error) {
+      final cancelled = (error.code).toLowerCase().contains("cancel") || (error.message ?? "").toLowerCase().contains("cancel");
+      if (mounted && !cancelled) setState(() => _message = "Sign-in did not finish. Try again.");
     } catch (error) {
       if (mounted) setState(() => _message = error.toString());
     } finally {
       if (mounted) setState(() => _busy = false);
     }
-  }
-
-  Future<void> _linkedin(AppState state) async {
-    if (!_consent()) return;
-    const clientId = String.fromEnvironment("LINKEDIN_CLIENT_ID");
-    const redirectUri = String.fromEnvironment("LINKEDIN_REDIRECT_URI", defaultValue: "http://localhost:5080/auth/linkedin/callback");
-    if (clientId.isEmpty) {
-      setState(() => _message = "LinkedIn sign-in needs LINKEDIN_CLIENT_ID. See the README.");
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      final verifier = _verifier();
-      final stateValue = _verifier();
-      final challenge = base64Url.encode(sha256.convert(utf8.encode(verifier)).bytes).replaceAll("=", "");
-      final url = Uri.https("www.linkedin.com", "/oauth/v2/authorization", {
-        "response_type": "code",
-        "client_id": clientId,
-        "redirect_uri": redirectUri,
-        "scope": "openid profile email",
-        "state": stateValue,
-        "code_challenge": challenge,
-        "code_challenge_method": "S256",
-      });
-      final result = await FlutterWebAuth2.authenticate(url: url.toString(), callbackUrlScheme: "employeevoice");
-      final returned = Uri.parse(result);
-      if (returned.queryParameters["state"] != stateValue) {
-        if (mounted) setState(() => _message = "LinkedIn returned an unexpected response.");
-        return;
-      }
-      final error = returned.queryParameters["error"];
-      if (error != null && error.isNotEmpty) {
-        if (mounted) setState(() => _message = "LinkedIn did not complete sign-in.");
-        return;
-      }
-      final code = returned.queryParameters["code"] ?? "";
-      await state.signInWithLinkedIn(code, verifier, adult: _adult, terms: _terms);
-    } catch (error) {
-      if (mounted) setState(() => _message = error.toString());
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  String _verifier() {
-    final bytes = List<int>.generate(32, (_) => Random.secure().nextInt(256));
-    return base64Url.encode(bytes).replaceAll("=", "");
   }
 
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text("Sign in")),
-      body: Form(
-        key: _form,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            const Image(image: AssetImage("assets/brand/logo.png"), height: 160, fit: BoxFit.contain, semanticLabel: "Employee Voice India"),
-            const SizedBox(height: 16),
-            const Text("Sign in with your mobile number, Google, or LinkedIn. There is no password. Signing in does not verify employment."),
-            const SizedBox(height: 12),
-            CheckboxListTile(
-              value: _adult,
-              onChanged: _busy ? null : (value) => setState(() => _adult = value ?? false),
-              title: const Text("I am 18 or older"),
-              controlAffinity: ListTileControlAffinity.leading,
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 28, offset: Offset(0, 10))],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Image(image: AssetImage("assets/brand/logo.png"), height: 88, fit: BoxFit.contain, semanticLabel: "Employee Voice India"),
+                    const SizedBox(height: 20),
+                    Text("Login", style: _poppins(size: 32, weight: FontWeight.w700, height: 1.1)),
+                    const SizedBox(height: 8),
+                    Text("Sign in with your Gmail account.", textAlign: TextAlign.center, style: _poppins(size: 14, color: _muted, height: 1.4)),
+                    const SizedBox(height: 28),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _cta,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          textStyle: _poppins(size: 16, weight: FontWeight.w600, color: Colors.white),
+                        ),
+                        onPressed: _busy ? null : () => _gmail(state),
+                        child: const Text("Continue with Gmail"),
+                      ),
+                    ),
+                    if (_message != null) ...[
+                      const SizedBox(height: 12),
+                      Text(_message!, textAlign: TextAlign.center, style: _poppins(size: 13, color: const Color(0xFFB42318))),
+                    ],
+                    const SizedBox(height: 16),
+                    Text(
+                      "By continuing you confirm you are 18 or older and agree to the terms and privacy notice.",
+                      textAlign: TextAlign.center,
+                      style: _poppins(size: 12, color: _muted, height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            CheckboxListTile(
-              value: _terms,
-              onChanged: _busy ? null : (value) => setState(() => _terms = value ?? false),
-              title: const Text("I agree to the draft terms and privacy notice"),
-              controlAffinity: ListTileControlAffinity.leading,
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _phone,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(labelText: "Indian mobile number", border: OutlineInputBorder()),
-              validator: (value) => FormRules.indianMobile(value ?? ""),
-            ),
-            const SizedBox(height: 12),
-            FilledButton(onPressed: _busy ? null : () => _send(state), child: const Text("Send code")),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _code,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: "Text message code", border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 12),
-            FilledButton(onPressed: _busy ? null : () => _verify(state), child: const Text("Continue")),
-            if (kDebugMode) ...[
-              const SizedBox(height: 8),
-              TextButton(onPressed: _busy ? null : () => _developmentCode(state), child: const Text("Load development code")),
-            ],
-            const SizedBox(height: 24),
-            OutlinedButton(onPressed: _busy ? null : () => _google(state), child: const Text("Continue with Google")),
-            const SizedBox(height: 8),
-            OutlinedButton(onPressed: _busy ? null : () => _linkedin(state), child: const Text("Continue with LinkedIn")),
-            if (_message != null) ...[const SizedBox(height: 12), Text(_message!)],
-          ],
+          ),
         ),
       ),
     );

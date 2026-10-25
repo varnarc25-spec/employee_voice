@@ -51,7 +51,9 @@ class SecureTokenStore implements TokenStore {
 class AppState extends ChangeNotifier {
   AppState({ApiClient? client, TokenStore? store, String? baseUrl})
       : client = client ?? ApiClient(baseUrl: baseUrl ?? const String.fromEnvironment("API_BASE_URL", defaultValue: "http://10.0.2.2:5080")),
-        store = store ?? SecureTokenStore();
+        store = store ?? SecureTokenStore() {
+    this.client.onUnauthorized = _refreshAccess;
+  }
 
   final ApiClient client;
   final TokenStore store;
@@ -60,12 +62,50 @@ class AppState extends ChangeNotifier {
   bool ready = false;
 
   bool get signedIn => access != null && access!.isNotEmpty;
+  Future<String?>? _refreshing;
 
   Future<void> bootstrap() async {
     final saved = await store.read();
     access = saved.$1;
     refresh = saved.$2;
+    if (refresh != null && refresh!.isNotEmpty) await _refreshAccess();
     ready = true;
+    notifyListeners();
+  }
+
+  Future<String?> _refreshAccess() {
+    final pending = _refreshing;
+    if (pending != null) return pending;
+    final run = _refreshAccessOnce();
+    _refreshing = run;
+    return run.whenComplete(() {
+      if (identical(_refreshing, run)) _refreshing = null;
+    });
+  }
+
+  Future<String?> _refreshAccessOnce() async {
+    final current = refresh;
+    if (current == null || current.isEmpty) {
+      await _clearSession();
+      return null;
+    }
+    try {
+      final body = await client.post("/api/v1/auth/refresh", {
+        "refreshToken": current,
+        "client": "mobile",
+      }, allowRefresh: false);
+      await _storeSession(body);
+      return access;
+    } catch (_) {
+      await _clearSession();
+      return null;
+    }
+  }
+
+  Future<void> _clearSession() async {
+    access = null;
+    refresh = null;
+    await store.clear();
     notifyListeners();
   }
 
@@ -98,6 +138,28 @@ class AppState extends ChangeNotifier {
   Future<void> signInWithGoogle(String idToken, {required bool adult, required bool terms}) async {
     final body = await client.post("/api/v1/auth/google", {
       "idToken": idToken,
+      "confirmedAdult": adult,
+      "acceptedTerms": terms,
+    });
+    await _storeSession(body);
+  }
+
+  Future<Map<String, String>> auth0Config() async {
+    final body = await client.get("/api/v1/auth/auth0/mobile");
+    return {
+      "domain": body["domain"] as String? ?? "",
+      "clientId": body["clientId"] as String? ?? "",
+      "connection": body["connection"] as String? ?? "google-oauth2",
+      "audience": body["audience"] as String? ?? "",
+      "redirectUri": body["redirectUri"] as String? ?? "employeevoice://auth0/callback",
+    };
+  }
+
+  Future<void> signInWithAuth0(String code, String codeVerifier, {required bool adult, required bool terms}) async {
+    final body = await client.post("/api/v1/auth/auth0", {
+      "code": code,
+      "codeVerifier": codeVerifier,
+      "redirectUri": "employeevoice://auth0/callback",
       "confirmedAdult": adult,
       "acceptedTerms": terms,
     });
@@ -141,10 +203,7 @@ class AppState extends ChangeNotifier {
   Future<void> signOut() async {
     final currentRefresh = refresh;
     final currentAccess = access;
-    access = null;
-    refresh = null;
-    await store.clear();
-    notifyListeners();
+    await _clearSession();
     if (currentRefresh != null) {
       try {
         await client.post("/api/v1/auth/sign-out", {"refreshToken": currentRefresh, "client": "mobile"}, bearer: currentAccess);
