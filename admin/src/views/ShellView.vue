@@ -16,7 +16,25 @@ onMounted(() => session.load());
 
 const groups = computed<NavGroup[]>(() => {
   const all: NavGroup[] = [
-    { id: "overview", label: "Overview", items: [{ to: "/", label: "Dashboard", show: true }] },
+    {
+      id: "overview",
+      label: "Overview",
+      items: [
+        { to: "/", label: "Dashboard", show: true },
+        { to: "/members", label: "Members", show: session.isReviewer },
+        { to: "/locations", label: "Locations", show: true },
+        { to: "/schemes", label: "State schemes", show: true },
+        { to: "/logos", label: "Portal logos", show: session.isAdmin },
+      ],
+    },
+    {
+      id: "elections",
+      label: "Elections",
+      items: [
+        { to: "/elections", label: "Statistical reports", show: true },
+        { to: "/election-states", label: "States", show: true },
+      ],
+    },
     {
       id: "community",
       label: "Community",
@@ -47,7 +65,7 @@ const groups = computed<NavGroup[]>(() => {
     .filter((group) => group.items.length > 0);
 });
 
-const displayName = computed(() => session.me?.displayName || "Staff");
+const displayName = computed(() => session.me?.displayName || "Admin");
 const initials = computed(() => {
   const letters = displayName.value
     .split(/\s+/)
@@ -109,6 +127,7 @@ async function leave(): Promise<void> {
         <div class="topbar-user">
           <span class="avatar" aria-hidden="true">{{ initials }}</span>
           <span>{{ displayName }}</span>
+          <router-link class="signout" to="/password">Reset password</router-link>
           <button class="signout" type="button" @click="leave">Logout</button>
         </div>
       </div>

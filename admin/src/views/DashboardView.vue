@@ -20,6 +20,11 @@ const error = ref("");
 const orgName = ref("");
 const orgDomain = ref("");
 const orgMessage = ref("");
+const staffEmail = ref("");
+const staffPassword = ref("");
+const staffName = ref("");
+const staffRole = ref("Moderator");
+const staffMessage = ref("");
 
 onMounted(async () => {
   if (!session.isAdmin) return;
@@ -32,6 +37,27 @@ onMounted(async () => {
 
 function showCount(value: number | null): string {
   return value === null ? "Hidden because the group is smaller than 5" : String(value);
+}
+
+async function addStaff(): Promise<void> {
+  staffMessage.value = "";
+  try {
+    await api("/api/v1/admin/roles", {
+      method: "POST",
+      body: JSON.stringify({
+        email: staffEmail.value,
+        password: staffPassword.value,
+        displayName: staffName.value || null,
+        role: staffRole.value,
+      }),
+    });
+    staffMessage.value = "Staff user created.";
+    staffEmail.value = "";
+    staffPassword.value = "";
+    staffName.value = "";
+  } catch (caught) {
+    staffMessage.value = caught instanceof Error ? caught.message : "Could not add that staff account.";
+  }
 }
 
 async function addOrg(): Promise<void> {
@@ -65,6 +91,23 @@ async function addOrg(): Promise<void> {
         <li v-for="bucket in analytics.postsByCategory" :key="bucket.key">{{ bucket.key }}: {{ bucket.count }}</li>
       </ul>
     </div>
+    <form v-if="session.isAdmin" @submit.prevent="addStaff">
+      <h2>Create office user</h2>
+      <label for="staff-email">Email</label>
+      <input id="staff-email" v-model="staffEmail" type="email" required>
+      <label for="staff-password">Password</label>
+      <input id="staff-password" v-model="staffPassword" type="password" minlength="8" autocomplete="new-password" required>
+      <label for="staff-name">Display name</label>
+      <input id="staff-name" v-model="staffName">
+      <label for="staff-role">Role</label>
+      <select id="staff-role" v-model="staffRole">
+        <option value="Moderator">Moderator</option>
+        <option value="VerificationReviewer">Verification reviewer</option>
+      </select>
+      <p>Super admin is reserved for business@varnarc.com.</p>
+      <button type="submit">Create user</button>
+      <p role="status">{{ staffMessage }}</p>
+    </form>
     <form v-if="session.isAdmin" @submit.prevent="addOrg">
       <h2>Allowlisted work-email domain</h2>
       <label for="org-name">Organization name, internal only</label>
