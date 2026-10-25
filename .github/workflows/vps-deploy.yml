@@ -1,0 +1,43 @@
+name: VPS deploy
+
+# Production CD for https://github.com/varnarc25-spec/employee_voice
+# App directory on the server: /root/employee_voice
+#
+# GitHub → Settings → Environments → vps-production secrets:
+#   VPS_HOST, VPS_USER, VPS_PORT, VPS_SSH_KEY
+#
+# The server file /root/employee_voice/infra/.env is not in git.
+# It must set POSTGRES_PASSWORD and JWT_SIGNING_KEY.
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: employee-voice-vps
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: vps-production
+    timeout-minutes: 45
+    steps:
+      - name: SSH pull and rebuild
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          port: ${{ secrets.VPS_PORT }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 40m
+          script: |
+            set -euo pipefail
+            cd /root/employee_voice
+            git fetch origin
+            git checkout main
+            git pull --ff-only origin main
+            docker compose -f infra/docker-compose.vps.yml --env-file infra/.env up -d --build
+            docker compose -f infra/docker-compose.vps.yml --env-file infra/.env ps

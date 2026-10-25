@@ -1,0 +1,59 @@
+name: employee-voice
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-employee_voice}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-employee_voice}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-employee_voice} -d ${POSTGRES_DB:-employee_voice}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PORT: "8080"
+      NODE_ENV: ${NODE_ENV:-development}
+      PHONE_OTP_PROVIDER: ${PHONE_OTP_PROVIDER:-development}
+      DATABASE_URL: postgres://${POSTGRES_USER:-employee_voice}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-employee_voice}
+      DATABASE_MIGRATE: "true"
+      SEED_DEMO: "false"
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://evadmin.varnarc.com,http://evadmin.varnarc.com}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-https://evadmin.varnarc.com}
+      ADMIN_BASE_URL: ${ADMIN_BASE_URL:-https://evadmin.varnarc.com}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  admin:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.admin
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5174:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata:
