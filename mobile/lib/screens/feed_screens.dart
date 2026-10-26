@@ -31,7 +31,6 @@ class _FeedScreenState extends State<FeedScreen> {
   List<Map<String, dynamic>> _items = [];
   String? _schemeLabel;
   String? _schemeUrl;
-  List<Map<String, dynamic>> _logos = [];
 
   @override
   void initState() {
@@ -60,19 +59,11 @@ class _FeedScreenState extends State<FeedScreen> {
         schemeLabel = null;
         schemeUrl = null;
       }
-      List<Map<String, dynamic>> logos = [];
-      try {
-        final logoBody = await state.client.get("/api/v1/portal-logos", bearer: state.access);
-        logos = (logoBody["items"] as List? ?? []).cast<Map<String, dynamic>>();
-      } catch (_) {
-        logos = [];
-      }
       if (mounted) {
         setState(() {
           _items = items;
           _schemeLabel = schemeLabel;
           _schemeUrl = schemeUrl;
-          _logos = logos;
         });
       }
     } catch (error) {
@@ -97,38 +88,6 @@ class _FeedScreenState extends State<FeedScreen> {
       body: Column(
         children: [
           const Padding(padding: EdgeInsets.fromLTRB(16, 12, 16, 0), child: NoticeBanner("Peers see your display name. Moderators and server operators can still access account data.")),
-          if (_logos.isNotEmpty)
-            SizedBox(
-              height: 64,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                itemCount: _logos.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final logo = _logos[index];
-                  final imageUrl = logo["imageUrl"] as String? ?? "";
-                  final link = logo["linkUrl"] as String?;
-                  return Material(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(8),
-                      onTap: link == null ? null : () => launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Image.network(
-                          "${AppScope.of(context).client.baseUrl}$imageUrl",
-                          height: 40,
-                          fit: BoxFit.contain,
-                          semanticLabel: logo["altText"] as String? ?? logo["title"] as String? ?? "Portal logo",
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: Material(
