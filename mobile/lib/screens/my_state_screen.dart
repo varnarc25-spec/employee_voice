@@ -131,7 +131,7 @@ class _MyStateScreenState extends State<MyStateScreen> {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       children: [
-                        _Tile(Icons.how_to_vote_outlined, "Elections", () => _section("Elections", election == null ? "No published election summary for this state." : election["name"] as String)),
+                        _Tile(Icons.how_to_vote_outlined, "Elections", () => _section("Elections", election == null ? "No constituency results are stored for this state." : "${election["name"]}\n\n${parties.map((row) => "${row["abbreviation"] ?? row["name"]}: ${row["seats"]}").join("\n")}")),
                         _Tile(Icons.flag_outlined, "Parties", () => _section("Parties", parties.isEmpty ? "No published party seat list for this state." : parties.map((row) => "${row["abbreviation"] ?? row["name"]}: ${row["seats"]}").join("\n"))),
                         _Tile(Icons.menu_book_outlined, "Manifestos", () => _section("Manifestos", "No published manifesto is on file.")),
                         _Tile(Icons.card_giftcard_outlined, "Benefits", () => _openScheme()),

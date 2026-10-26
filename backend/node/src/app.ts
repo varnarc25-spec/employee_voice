@@ -676,17 +676,21 @@ export function createApp(): express.Express {
          ORDER BY started_on DESC NULLS LAST LIMIT 1`,
         [code],
       );
-      const election = await one<{ id: string; name: string; election_type: string; election_year: number; total_seats: number | null; term_years: number | null }>(
-        `SELECT id, name, election_type, election_year, total_seats, term_years FROM civic_elections
-         WHERE state_lgd_code = $1 AND publication_status = 'published' AND deleted_at IS NULL
-         ORDER BY election_year DESC LIMIT 1`,
+      const storedElection = await one<{ kind: string; year: number; election_name: string }>(
+        `SELECT kind, year, election_name FROM constituency_election_results
+         WHERE state_lgd_code = $1
+         ORDER BY year DESC, CASE kind WHEN 'assembly' THEN 0 WHEN 'lok_sabha' THEN 1 ELSE 2 END
+         LIMIT 1`,
         [code],
       );
-      const seats = election
-        ? await query<{ party_name: string; party_abbreviation: string | null; seats: number; vote_share: string | null }>(
-          `SELECT party_name, party_abbreviation, seats, vote_share::text FROM civic_election_party_seats
-           WHERE election_id = $1 AND publication_status = 'published' ORDER BY seats DESC`,
-          [election.id],
+      const storedSeats = storedElection
+        ? await query<{ party: string | null; seats: number }>(
+          `SELECT COALESCE(NULLIF(party, ''), 'Independent') AS party, count(*)::int AS seats
+           FROM constituency_election_results
+           WHERE state_lgd_code = $1 AND kind = $2 AND year = $3
+           GROUP BY 1
+           ORDER BY seats DESC, party`,
+          [code, storedElection.kind, storedElection.year],
         )
         : [];
       const schemeLink = await one<{ scheme_url: string }>("SELECT scheme_url FROM state_scheme_links WHERE state_lgd_code = $1", [code]);
@@ -704,18 +708,18 @@ export function createApp(): express.Express {
         government: government
           ? { headTitle: government.head_title, headName: government.head_name, coalitionName: government.coalition_name }
           : null,
-        latestElection: election
+        latestElection: storedElection
           ? {
-            name: election.name,
-            electionType: election.election_type,
-            year: election.election_year,
-            totalSeats: election.total_seats,
-            termYears: election.term_years,
-            parties: seats.map((row) => ({
-              name: row.party_name,
-              abbreviation: row.party_abbreviation,
+            name: storedElection.election_name,
+            electionType: storedElection.kind,
+            year: storedElection.year,
+            totalSeats: storedSeats.reduce((sum, row) => sum + row.seats, 0),
+            termYears: storedElection.kind === "assembly" ? 5 : null,
+            parties: storedSeats.map((row) => ({
+              name: row.party,
+              abbreviation: row.party,
               seats: row.seats,
-              voteShare: row.vote_share === null ? null : Number(row.vote_share),
+              voteShare: null,
             })),
           }
           : null,
