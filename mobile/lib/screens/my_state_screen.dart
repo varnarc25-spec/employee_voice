@@ -149,6 +149,11 @@ class _MyStateScreenState extends State<MyStateScreen> {
                     else
                       _SeatCard(election: election, parties: parties),
                     const SizedBox(height: 16),
+                    _BenefitsSection(
+                      stateName: state["name"] as String? ?? "this state",
+                      schemes: (_dashboard?["schemes"] as List? ?? []).cast<Map<String, dynamic>>(),
+                    ),
+                    const SizedBox(height: 16),
                     Text("Discover ${state["name"]}", style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
                     Wrap(
@@ -185,6 +190,79 @@ class _MyStateScreenState extends State<MyStateScreen> {
       builder: (_) => Scaffold(
         appBar: AppBar(title: Text(title)),
         body: Padding(padding: const EdgeInsets.all(16), child: Text(body)),
+      ),
+    ));
+  }
+}
+
+class _BenefitsSection extends StatelessWidget {
+  const _BenefitsSection({required this.stateName, required this.schemes});
+
+  final String stateName;
+  final List<Map<String, dynamic>> schemes;
+
+  @override
+  Widget build(BuildContext context) {
+    final preview = schemes.take(4).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(child: Text("Government benefits & promises", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
+            if (schemes.length > preview.length)
+              TextButton(onPressed: () => _openAll(context), child: const Text("View all")),
+          ],
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.account_balance_outlined),
+          title: const Text("Welfare schemes & benefits"),
+          subtitle: Text(schemes.isEmpty ? "No schemes are stored for $stateName." : "${schemes.length} schemes stored for $stateName."),
+        ),
+        for (final scheme in preview)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(scheme["name"] as String? ?? ""),
+            subtitle: Text([
+              scheme["department"] as String? ?? "",
+              ((scheme["categories"] as List?) ?? []).join(", "),
+            ].where((part) => part.isNotEmpty).join(" · ")),
+            trailing: const Icon(Icons.open_in_new, size: 18),
+            onTap: () {
+              final url = scheme["url"] as String?;
+              if (url != null) launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+            },
+          ),
+        const Divider(),
+        const ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(Icons.fact_check_outlined),
+          title: Text("Manifesto promise tracker"),
+          subtitle: Text("No reviewed manifesto promises are published yet."),
+        ),
+      ],
+    );
+  }
+
+  void _openAll(BuildContext context) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => Scaffold(
+        appBar: AppBar(title: Text("Schemes · $stateName")),
+        body: ListView(
+          children: [
+            for (final scheme in schemes)
+              ListTile(
+                title: Text(scheme["name"] as String? ?? ""),
+                subtitle: Text(scheme["department"] as String? ?? ""),
+                trailing: const Icon(Icons.open_in_new, size: 18),
+                onTap: () {
+                  final url = scheme["url"] as String?;
+                  if (url != null) launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                },
+              ),
+          ],
+        ),
       ),
     ));
   }

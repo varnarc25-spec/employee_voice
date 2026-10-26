@@ -694,6 +694,13 @@ export function createApp(): express.Express {
         )
         : [];
       const schemeLink = await one<{ scheme_url: string }>("SELECT scheme_url FROM state_scheme_links WHERE state_lgd_code = $1", [code]);
+      const schemes = await query<{ scheme_name: string; department_name: string | null; category: unknown; scheme_url: string }>(
+        `SELECT scheme_name, department_name, category, scheme_url
+         FROM government_schemes
+         WHERE state_lgd_code = $1
+         ORDER BY scheme_name`,
+        [code],
+      );
       res.json({
         state: { lgdCode: code, name: state?.name_en ?? "State", kind: state?.kind ?? "State" },
         counts: {
@@ -724,6 +731,12 @@ export function createApp(): express.Express {
           }
           : null,
         schemeUrl: schemeLink?.scheme_url ?? null,
+        schemes: schemes.map((row) => ({
+          name: row.scheme_name,
+          department: row.department_name,
+          categories: Array.isArray(row.category) ? row.category : [],
+          url: row.scheme_url,
+        })),
       });
     } catch (error) { next(error); }
   });
