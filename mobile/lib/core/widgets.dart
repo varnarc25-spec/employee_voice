@@ -1,6 +1,18 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 
+class JoinUsAction extends StatelessWidget {
+  const JoinUsAction({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      onPressed: () => context.push("/involved"),
+      child: const Text("Join us"),
+    );
+  }
+}
+
 class AlertsAction extends StatelessWidget {
   const AlertsAction({super.key});
 

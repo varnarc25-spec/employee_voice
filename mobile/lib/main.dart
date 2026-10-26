@@ -115,8 +115,7 @@ class _AppShellState extends State<AppShell> {
     if (location.startsWith("/feed") || location.startsWith("/compose") || location.startsWith("/posts/")) return 0;
     if (location.startsWith("/polls")) return 1;
     if (location.startsWith("/state") || location.startsWith("/explore")) return 2;
-    if (location.startsWith("/involved")) return 3;
-    if (location.startsWith("/profile") || location.startsWith("/verification")) return 4;
+    if (location.startsWith("/profile") || location.startsWith("/verification")) return 3;
     return null;
   }
 
@@ -130,14 +129,13 @@ class _AppShellState extends State<AppShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (value) {
-          const paths = ["/feed", "/polls", "/state", "/involved", "/profile"];
+          const paths = ["/feed", "/polls", "/state", "/profile"];
           context.go(paths[value]);
         },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.forum_outlined), label: "Feed"),
           NavigationDestination(icon: Icon(Icons.how_to_vote_outlined), label: "Polls"),
           NavigationDestination(icon: Icon(Icons.map_outlined), label: "My state"),
-          NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined), label: "Get involved"),
           NavigationDestination(icon: Icon(Icons.person_outline), label: "Profile"),
         ],
       ),

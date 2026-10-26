@@ -91,7 +91,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(heading),
-        actions: widget.mine ? const [AlertsAction()] : null,
+        actions: widget.mine ? const [JoinUsAction(), AlertsAction()] : null,
       ),
       body: Column(
         children: [
