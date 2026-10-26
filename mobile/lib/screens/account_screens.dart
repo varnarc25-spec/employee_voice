@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
+import "package:url_launcher/url_launcher.dart";
 
 import "../core/rules.dart";
 import "../core/widgets.dart";
@@ -612,11 +613,53 @@ class _GuidelinesScreenState extends State<GuidelinesScreen> {
   bool _loading = true;
   String? _error;
   late String _slug = widget.initialSlug;
+  List<Map<String, dynamic>> _logos = [];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load(_slug));
+  }
+
+  Widget _dataSources() {
+    final state = AppScope.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Data sources", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        const Text("Explore India, directories, and government scheme links use public portals. These marks identify those sources. Opening one leaves this app."),
+        const SizedBox(height: 16),
+        if (_logos.isEmpty) const Text("No source logos are published yet."),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final logo in _logos)
+              Material(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () {
+                    final link = logo["linkUrl"] as String?;
+                    if (link != null) launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication);
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Image.network(
+                      "${state.client.baseUrl}${logo["imageUrl"]}",
+                      height: 48,
+                      fit: BoxFit.contain,
+                      semanticLabel: logo["altText"] as String? ?? logo["title"] as String? ?? "Portal logo",
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
   }
 
   Future<void> _load(String slug) async {
@@ -627,6 +670,13 @@ class _GuidelinesScreenState extends State<GuidelinesScreen> {
       _error = null;
     });
     try {
+      if (slug == "sources") {
+        final logoBody = await state.client.get("/api/v1/portal-logos", bearer: state.access);
+        if (mounted) {
+          setState(() => _logos = (logoBody["items"] as List? ?? []).cast<Map<String, dynamic>>());
+        }
+        return;
+      }
       final body = await state.client.get("/api/v1/legal/$slug");
       if (mounted) setState(() => _text = body["body"] as String? ?? "");
     } catch (error) {
@@ -646,6 +696,7 @@ class _GuidelinesScreenState extends State<GuidelinesScreen> {
             spacing: 8,
             children: [
               TextButton(onPressed: () => _load("guidelines"), child: const Text("Guidelines")),
+              TextButton(onPressed: () => _load("sources"), child: const Text("Data sources")),
               TextButton(onPressed: () => _load("privacy"), child: const Text("Privacy")),
               TextButton(onPressed: () => _load("terms"), child: const Text("Terms")),
               TextButton(onPressed: () => _load("appeals"), child: const Text("Appeals")),
@@ -656,7 +707,10 @@ class _GuidelinesScreenState extends State<GuidelinesScreen> {
               loading: _loading,
               error: _error,
               onRetry: () => _load(_slug),
-              child: SingleChildScrollView(padding: const EdgeInsets.all(16), child: Text(_text)),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: _slug == "sources" ? _dataSources() : Text(_text),
+              ),
             ),
           ),
         ],
