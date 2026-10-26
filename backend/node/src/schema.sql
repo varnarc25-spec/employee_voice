@@ -1582,3 +1582,171 @@ CREATE TABLE IF NOT EXISTS constituency_election_results (
   party text,
   PRIMARY KEY (state_lgd_code, ac_no, kind, year)
 );
+
+-- Civic dashboard records. Public reads must filter publication_status = 'published'.
+-- These tables do not replace LGD geography, explore_* content, government_schemes, or constituency_election_results.
+
+CREATE TABLE IF NOT EXISTS civic_sources (
+  id uuid PRIMARY KEY,
+  name text NOT NULL,
+  source_type text NOT NULL,
+  source_url text,
+  publisher text,
+  publication_date date,
+  retrieved_at timestamptz,
+  document_hash text,
+  license_terms text,
+  state_lgd_code integer REFERENCES lgd_states (lgd_code),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ix_civic_sources_url_hash ON civic_sources (source_url, document_hash) WHERE source_url IS NOT NULL AND document_hash IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS civic_elections (
+  id uuid PRIMARY KEY,
+  state_lgd_code integer NOT NULL REFERENCES lgd_states (lgd_code),
+  election_type text NOT NULL,
+  name text NOT NULL,
+  election_year integer NOT NULL,
+  total_seats integer,
+  majority_mark integer,
+  term_years integer,
+  status text NOT NULL DEFAULT 'draft',
+  source_id uuid REFERENCES civic_sources (id),
+  publication_status text NOT NULL DEFAULT 'draft',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  deleted_at timestamptz,
+  CONSTRAINT civic_elections_type_check CHECK (election_type IN ('lok_sabha', 'assembly', 'council', 'municipal', 'panchayat', 'by_election', 'other')),
+  CONSTRAINT civic_elections_publication_check CHECK (publication_status IN ('draft', 'needs_review', 'published', 'rejected', 'archived'))
+);
+CREATE INDEX IF NOT EXISTS ix_civic_elections_state ON civic_elections (state_lgd_code, election_type, election_year DESC);
+
+CREATE TABLE IF NOT EXISTS civic_election_party_seats (
+  id uuid PRIMARY KEY,
+  election_id uuid NOT NULL REFERENCES civic_elections (id),
+  party_name text NOT NULL,
+  party_abbreviation text,
+  seats integer NOT NULL,
+  vote_share numeric(6, 2),
+  source_id uuid REFERENCES civic_sources (id),
+  publication_status text NOT NULL DEFAULT 'draft',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT civic_party_seats_publication_check CHECK (publication_status IN ('draft', 'needs_review', 'published', 'rejected', 'archived'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ix_civic_party_seats_election_party ON civic_election_party_seats (election_id, party_abbreviation) WHERE party_abbreviation IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS civic_parties (
+  id uuid PRIMARY KEY,
+  name text NOT NULL,
+  short_name text,
+  abbreviation text,
+  recognition_type text,
+  symbol text,
+  website_url text,
+  status text NOT NULL DEFAULT 'active',
+  source_id uuid REFERENCES civic_sources (id),
+  publication_status text NOT NULL DEFAULT 'draft',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  deleted_at timestamptz,
+  CONSTRAINT civic_parties_recognition_check CHECK (recognition_type IS NULL OR recognition_type IN ('national', 'state', 'registered_unrecognised', 'independent', 'historical')),
+  CONSTRAINT civic_parties_publication_check CHECK (publication_status IN ('draft', 'needs_review', 'published', 'rejected', 'archived'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ix_civic_parties_abbreviation ON civic_parties (abbreviation) WHERE abbreviation IS NOT NULL AND deleted_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS civic_party_state_units (
+  party_id uuid NOT NULL REFERENCES civic_parties (id),
+  state_lgd_code integer NOT NULL REFERENCES lgd_states (lgd_code),
+  publication_status text NOT NULL DEFAULT 'draft',
+  source_id uuid REFERENCES civic_sources (id),
+  PRIMARY KEY (party_id, state_lgd_code)
+);
+
+CREATE TABLE IF NOT EXISTS civic_governments (
+  id uuid PRIMARY KEY,
+  state_lgd_code integer NOT NULL REFERENCES lgd_states (lgd_code),
+  head_title text NOT NULL,
+  head_name text,
+  coalition_name text,
+  started_on date,
+  ended_on date,
+  source_id uuid REFERENCES civic_sources (id),
+  publication_status text NOT NULL DEFAULT 'draft',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT civic_governments_publication_check CHECK (publication_status IN ('draft', 'needs_review', 'published', 'rejected', 'archived'))
+);
+CREATE INDEX IF NOT EXISTS ix_civic_governments_state ON civic_governments (state_lgd_code, started_on DESC);
+
+CREATE TABLE IF NOT EXISTS civic_manifestos (
+  id uuid PRIMARY KEY,
+  party_id uuid REFERENCES civic_parties (id),
+  election_id uuid REFERENCES civic_elections (id),
+  state_lgd_code integer REFERENCES lgd_states (lgd_code),
+  title text NOT NULL,
+  language text NOT NULL DEFAULT 'en',
+  document_url text,
+  source_id uuid REFERENCES civic_sources (id),
+  publication_status text NOT NULL DEFAULT 'draft',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  deleted_at timestamptz,
+  CONSTRAINT civic_manifestos_publication_check CHECK (publication_status IN ('draft', 'needs_review', 'published', 'rejected', 'archived'))
+);
+
+CREATE TABLE IF NOT EXISTS civic_promises (
+  id uuid PRIMARY KEY,
+  manifesto_id uuid NOT NULL REFERENCES civic_manifestos (id),
+  title text NOT NULL,
+  original_text text,
+  page_number integer,
+  category text,
+  status text NOT NULL DEFAULT 'unverified',
+  source_id uuid REFERENCES civic_sources (id),
+  publication_status text NOT NULL DEFAULT 'draft',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT civic_promises_status_check CHECK (status IN ('not_started', 'announced', 'in_progress', 'partially_implemented', 'implemented', 'discontinued', 'unverified')),
+  CONSTRAINT civic_promises_publication_check CHECK (publication_status IN ('draft', 'needs_review', 'published', 'rejected', 'archived'))
+);
+
+CREATE TABLE IF NOT EXISTS civic_promise_reviews (
+  id uuid PRIMARY KEY,
+  promise_id uuid NOT NULL REFERENCES civic_promises (id),
+  previous_status text,
+  next_status text NOT NULL,
+  evidence_summary text NOT NULL,
+  evidence_url text,
+  reviewer_id uuid REFERENCES users (id),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS civic_budgets (
+  id uuid PRIMARY KEY,
+  state_lgd_code integer NOT NULL REFERENCES lgd_states (lgd_code),
+  fiscal_year text NOT NULL,
+  budget_type text NOT NULL,
+  amount_crore numeric(14, 2),
+  source_id uuid REFERENCES civic_sources (id),
+  publication_status text NOT NULL DEFAULT 'draft',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT civic_budgets_type_check CHECK (budget_type IN ('revenue', 'expenditure', 'deficit', 'debt', 'welfare', 'education', 'healthcare', 'employee')),
+  CONSTRAINT civic_budgets_publication_check CHECK (publication_status IN ('draft', 'needs_review', 'published', 'rejected', 'archived'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ix_civic_budgets_year_type ON civic_budgets (state_lgd_code, fiscal_year, budget_type) WHERE publication_status = 'published';
+
+CREATE TABLE IF NOT EXISTS civic_import_jobs (
+  id uuid PRIMARY KEY,
+  category text NOT NULL,
+  source_id uuid REFERENCES civic_sources (id),
+  state_lgd_code integer REFERENCES lgd_states (lgd_code),
+  status text NOT NULL DEFAULT 'draft',
+  requested_by uuid REFERENCES users (id),
+  error_summary text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT civic_import_jobs_status_check CHECK (status IN ('draft', 'extracted', 'needs_review', 'published', 'rejected', 'failed'))
+);
