@@ -637,6 +637,93 @@ export function createApp(): express.Express {
     } catch (error) { next(error); }
   });
 
+  authed.post("/me/home-state", async (req: AuthedRequest, res, next) => {
+    try {
+      const stateCode = memberLocationCode(req.body?.stateLgdCode);
+      if (!stateCode) throw new ApiError(400, "Invalid code", "Choose a state.", "invalid_code");
+      const state = await one("SELECT lgd_code FROM lgd_states WHERE lgd_code = $1", [stateCode]);
+      if (!state) throw new ApiError(404, "Not found", "That state was not found.", "not_found");
+      await query(
+        "UPDATE employee_profiles SET state_lgd_code = $2, district_lgd_code = NULL, sub_district_lgd_code = NULL, village_lgd_code = NULL, updated_at = now() WHERE user_id = $1",
+        [req.auth!.userId, stateCode],
+      );
+      res.sendStatus(204);
+    } catch (error) { next(error); }
+  });
+
+  authed.get("/me/state-dashboard", async (req: AuthedRequest, res, next) => {
+    try {
+      const profile = await one<{ state_lgd_code: number | null }>("SELECT state_lgd_code FROM employee_profiles WHERE user_id = $1", [req.auth!.userId]);
+      if (!profile?.state_lgd_code) {
+        res.json({ state: null });
+        return;
+      }
+      const code = profile.state_lgd_code;
+      const state = await one<{ name_en: string; kind: string }>("SELECT name_en, kind FROM lgd_states WHERE lgd_code = $1", [code]);
+      const districtCount = await one<{ count: string }>("SELECT count(*)::text AS count FROM lgd_districts WHERE state_lgd_code = $1", [code]);
+      const lokSabhaSeats = await one<{ count: string }>("SELECT count(*)::text AS count FROM lok_sabha_constituencies WHERE state_lgd_code = $1", [code]);
+      const assemblySeats = await one<{ count: string }>(
+        "SELECT count(DISTINCT ac_no)::text AS count FROM assembly_segments WHERE state_lgd_code = $1",
+        [code],
+      );
+      const schemeCount = await one<{ count: string }>("SELECT count(*)::text AS count FROM government_schemes WHERE state_lgd_code = $1", [code]);
+      const placeCount = await one<{ count: string }>("SELECT count(*)::text AS count FROM explore_places WHERE state_lgd_code = $1", [code]);
+      const dishCount = await one<{ count: string }>("SELECT count(*)::text AS count FROM explore_dishes WHERE state_lgd_code = $1", [code]);
+      const productCount = await one<{ count: string }>("SELECT count(*)::text AS count FROM explore_odop_products WHERE state_lgd_code = $1", [code]);
+      const government = await one<{ head_title: string; head_name: string | null; coalition_name: string | null }>(
+        `SELECT head_title, head_name, coalition_name FROM civic_governments
+         WHERE state_lgd_code = $1 AND publication_status = 'published' AND deleted_at IS NULL
+         ORDER BY started_on DESC NULLS LAST LIMIT 1`,
+        [code],
+      );
+      const election = await one<{ id: string; name: string; election_type: string; election_year: number; total_seats: number | null; term_years: number | null }>(
+        `SELECT id, name, election_type, election_year, total_seats, term_years FROM civic_elections
+         WHERE state_lgd_code = $1 AND publication_status = 'published' AND deleted_at IS NULL
+         ORDER BY election_year DESC LIMIT 1`,
+        [code],
+      );
+      const seats = election
+        ? await query<{ party_name: string; party_abbreviation: string | null; seats: number; vote_share: string | null }>(
+          `SELECT party_name, party_abbreviation, seats, vote_share::text FROM civic_election_party_seats
+           WHERE election_id = $1 AND publication_status = 'published' ORDER BY seats DESC`,
+          [election.id],
+        )
+        : [];
+      const schemeLink = await one<{ scheme_url: string }>("SELECT scheme_url FROM state_scheme_links WHERE state_lgd_code = $1", [code]);
+      res.json({
+        state: { lgdCode: code, name: state?.name_en ?? "State", kind: state?.kind ?? "State" },
+        counts: {
+          districts: Number(districtCount?.count ?? 0),
+          lokSabhaSeats: Number(lokSabhaSeats?.count ?? 0),
+          assemblySeats: Number(assemblySeats?.count ?? 0),
+          schemes: Number(schemeCount?.count ?? 0),
+          places: Number(placeCount?.count ?? 0),
+          dishes: Number(dishCount?.count ?? 0),
+          products: Number(productCount?.count ?? 0),
+        },
+        government: government
+          ? { headTitle: government.head_title, headName: government.head_name, coalitionName: government.coalition_name }
+          : null,
+        latestElection: election
+          ? {
+            name: election.name,
+            electionType: election.election_type,
+            year: election.election_year,
+            totalSeats: election.total_seats,
+            termYears: election.term_years,
+            parties: seats.map((row) => ({
+              name: row.party_name,
+              abbreviation: row.party_abbreviation,
+              seats: row.seats,
+              voteShare: row.vote_share === null ? null : Number(row.vote_share),
+            })),
+          }
+          : null,
+        schemeUrl: schemeLink?.scheme_url ?? null,
+      });
+    } catch (error) { next(error); }
+  });
+
   authed.get("/me/explore", async (req: AuthedRequest, res, next) => {
     try {
       const section = String(req.query.section ?? "places");

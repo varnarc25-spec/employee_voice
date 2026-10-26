@@ -27,6 +27,12 @@ Do not add a second states table. Mandals, taluks, tehsils, and blocks are not t
 
 Public reads must use `publication_status = 'published'`. Draft and review rows stay out of the member API. A promise status change is written to `civic_promise_reviews` with an evidence summary. No seed rows invent a chief minister, a seat total, a benefit amount, or a manifesto promise.
 
-## Still not in this sprint
+## Member API
 
-Public dashboard endpoints, the Flutter My State layout, the Next.js state pages, the admin import center, and scheduled sync. Those wait until published rows exist to return. Empty states are the correct response until a reviewer publishes a sourced record.
+`GET /api/v1/me/state-dashboard` reads the signed-in member's `state_lgd_code`. Seat and district counts come from the LGD and constituency tables. Chief minister, coalition, term length, and party seat totals come only from published civic rows. `POST /api/v1/me/home-state` stores the chosen state and clears the district selection. It does not read device location.
+
+The Flutter My State tab calls that endpoint. Places, food, products, and facts still use `GET /api/v1/me/explore`.
+
+## Still later
+
+The Next.js state pages, the admin import center, scheduled sync, and AI extraction. Empty civic sections stay empty until a reviewer publishes a sourced record.

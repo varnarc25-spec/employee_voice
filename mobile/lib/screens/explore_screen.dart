@@ -12,17 +12,18 @@ const _sections = <(String, String)>[
 ];
 
 class ExploreScreen extends StatefulWidget {
-  const ExploreScreen({super.key, this.mine = false, this.initialQuery = ""});
+  const ExploreScreen({super.key, this.mine = false, this.initialQuery = "", this.initialSection = "places"});
 
   final bool mine;
   final String initialQuery;
+  final String initialSection;
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  String _section = "places";
+  late String _section = widget.initialSection;
   bool _allStates = false;
   bool _loading = true;
   String? _error;

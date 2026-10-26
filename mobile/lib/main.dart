@@ -7,6 +7,7 @@ import "screens/auth_screens.dart";
 import "screens/explore_screen.dart";
 import "screens/feed_screens.dart";
 import "screens/involved_screen.dart";
+import "screens/my_state_screen.dart";
 import "screens/polls_screen.dart";
 import "screens/tax_info_screen.dart";
 
@@ -64,7 +65,7 @@ class _EmployeeVoiceAppState extends State<EmployeeVoiceApp> {
           ),
           GoRoute(path: "/tax", builder: (context, state) => const TaxInfoScreen()),
           GoRoute(path: "/polls", builder: (context, state) => const PollsScreen()),
-          GoRoute(path: "/state", builder: (context, state) => const ExploreScreen(mine: true)),
+          GoRoute(path: "/state", builder: (context, state) => const MyStateScreen()),
           GoRoute(path: "/involved", builder: (context, state) => const InvolvedScreen()),
           GoRoute(path: "/alerts", builder: (context, state) => const AlertsScreen()),
           GoRoute(path: "/profile", builder: (context, state) => const ProfileScreen()),
