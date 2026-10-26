@@ -218,7 +218,7 @@ class _SeatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final total = parties.fold<int>(0, (sum, row) => sum + (row["seats"] as int? ?? 0));
+    final total = parties.fold<int>(0, (sum, row) => sum + ((row["seats"] as num?)?.toInt() ?? 0));
     final kind = election["electionType"] == "lok_sabha" ? "Lok Sabha" : election["electionType"] == "assembly" ? "Assembly election" : "Election";
     return Card(
       child: Padding(
@@ -237,20 +237,27 @@ class _SeatCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: SizedBox(
-                height: 10,
-                child: Row(
-                  children: [
-                    for (var index = 0; index < parties.length; index++)
-                      Expanded(
-                        flex: (parties[index]["seats"] as int? ?? 0).clamp(1, 10000),
-                        child: ColoredBox(color: _color(_label(parties[index]), index)),
-                      ),
-                  ],
-                ),
-              ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: SizedBox(
+                    height: 14,
+                    width: width,
+                    child: Row(
+                      children: [
+                        for (var index = 0; index < parties.length; index++)
+                          Container(
+                            width: total == 0 ? 0 : width * ((parties[index]["seats"] as num?)?.toInt() ?? 0) / total,
+                            height: 14,
+                            color: _color(_label(parties[index]), index),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 10),
             for (var index = 0; index < parties.length; index += 2)
@@ -279,7 +286,7 @@ class _SeatCard extends StatelessWidget {
         const SizedBox(width: 6),
         Text(label),
         const Spacer(),
-        Text("${row["seats"]}", style: const TextStyle(fontWeight: FontWeight.w600)),
+        Text("${(row["seats"] as num?)?.toInt() ?? 0}", style: const TextStyle(fontWeight: FontWeight.w600)),
         const SizedBox(width: 12),
       ],
     );
