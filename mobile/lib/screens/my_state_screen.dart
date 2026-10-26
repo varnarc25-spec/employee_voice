@@ -147,19 +147,7 @@ class _MyStateScreenState extends State<MyStateScreen> {
                     if (election == null || parties.isEmpty)
                       const Card(child: ListTile(title: Text("No published seat totals"), subtitle: Text("Results appear here after a sourced record is reviewed.")))
                     else
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text("${election["name"]} · ${election["year"]}"),
-                              const SizedBox(height: 8),
-                              for (final row in parties) Text("${row["abbreviation"] ?? row["name"]} · ${row["seats"]} seats"),
-                            ],
-                          ),
-                        ),
-                      ),
+                      _SeatCard(election: election, parties: parties),
                     const SizedBox(height: 16),
                     Text("Discover ${state["name"]}", style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
@@ -199,6 +187,102 @@ class _MyStateScreenState extends State<MyStateScreen> {
         body: Padding(padding: const EdgeInsets.all(16), child: Text(body)),
       ),
     ));
+  }
+}
+
+class _SeatCard extends StatelessWidget {
+  const _SeatCard({required this.election, required this.parties});
+
+  final Map<String, dynamic> election;
+  final List<Map<String, dynamic>> parties;
+
+  static const _colors = <String, Color>{
+    "TDP": Color(0xFFE0A020),
+    "JSP": Color(0xFF2F6BFF),
+    "JNP": Color(0xFF2F6BFF),
+    "YSRCP": Color(0xFFE24B4B),
+    "BJP": Color(0xFF8E939B),
+    "INC": Color(0xFF2E9B57),
+    "AAP": Color(0xFF1F8A70),
+  };
+
+  String _label(Map<String, dynamic> row) {
+    final raw = (row["abbreviation"] as String? ?? row["name"] as String? ?? "").toUpperCase();
+    if (raw == "JNP") return "JSP";
+    return raw;
+  }
+
+  Color _color(String label, int index) {
+    return _colors[label] ?? Colors.primaries[index % Colors.primaries.length];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = parties.fold<int>(0, (sum, row) => sum + (row["seats"] as int? ?? 0));
+    final kind = election["electionType"] == "lok_sabha" ? "Lok Sabha" : election["electionType"] == "assembly" ? "Assembly election" : "Election";
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text("$kind · ${election["year"]}", style: const TextStyle(fontWeight: FontWeight.w600))),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(color: const Color(0xFFEEF3F7), borderRadius: BorderRadius.circular(12)),
+                  child: const Text("Final", style: TextStyle(fontSize: 12)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: SizedBox(
+                height: 10,
+                child: Row(
+                  children: [
+                    for (var index = 0; index < parties.length; index++)
+                      Expanded(
+                        flex: (parties[index]["seats"] as int? ?? 0).clamp(1, 10000),
+                        child: ColoredBox(color: _color(_label(parties[index]), index)),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            for (var index = 0; index < parties.length; index += 2)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    Expanded(child: _legend(parties[index], index)),
+                    Expanded(child: index + 1 < parties.length ? _legend(parties[index + 1], index + 1) : const SizedBox.shrink()),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 4),
+            Text("$total seats · ${election["name"]}", style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _legend(Map<String, dynamic> row, int index) {
+    final label = _label(row);
+    return Row(
+      children: [
+        Container(width: 8, height: 8, decoration: BoxDecoration(color: _color(label, index), shape: BoxShape.circle)),
+        const SizedBox(width: 6),
+        Text(label),
+        const Spacer(),
+        Text("${row["seats"]}", style: const TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(width: 12),
+      ],
+    );
   }
 }
 
