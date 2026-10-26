@@ -78,7 +78,10 @@ class _FeedScreenState extends State<FeedScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Image(image: AssetImage("assets/brand/logo.png"), height: 40, fit: BoxFit.contain, semanticLabel: "Employee Voice India"),
-        actions: [IconButton(onPressed: () => context.go("/guidelines"), icon: const Icon(Icons.menu_book_outlined), tooltip: "Guidelines")],
+        actions: [
+          IconButton(onPressed: () => context.go("/guidelines"), icon: const Icon(Icons.menu_book_outlined), tooltip: "Guidelines"),
+          const AlertsAction(),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push("/compose").then((_) => _load()),

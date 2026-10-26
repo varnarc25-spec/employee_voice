@@ -350,7 +350,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text("Profile")),
+      appBar: AppBar(title: const Text("Profile"), actions: const [AlertsAction()]),
       body: StatusBody(
         loading: _loading,
         error: _error,

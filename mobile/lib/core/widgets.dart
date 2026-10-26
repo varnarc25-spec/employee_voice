@@ -1,4 +1,18 @@
 import "package:flutter/material.dart";
+import "package:go_router/go_router.dart";
+
+class AlertsAction extends StatelessWidget {
+  const AlertsAction({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: () => context.push("/alerts"),
+      icon: const Icon(Icons.notifications_outlined),
+      tooltip: "Alerts",
+    );
+  }
+}
 
 class NoticeBanner extends StatelessWidget {
   const NoticeBanner(this.text, {super.key});

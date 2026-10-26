@@ -67,7 +67,7 @@ class _InvolvedScreenState extends State<InvolvedScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Get involved")),
+      appBar: AppBar(title: const Text("Get involved"), actions: const [AlertsAction()]),
       body: StatusBody(
         loading: _loading,
         error: _error,

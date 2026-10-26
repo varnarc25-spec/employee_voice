@@ -59,6 +59,7 @@ class _EmployeeVoiceAppState extends State<EmployeeVoiceApp> {
             builder: (context, state) => PostScreen(postId: state.pathParameters["id"]!),
           ),
           GoRoute(path: "/polls", builder: (context, state) => const PollsScreen()),
+          GoRoute(path: "/state", builder: (context, state) => const ExploreScreen(mine: true)),
           GoRoute(path: "/involved", builder: (context, state) => const InvolvedScreen()),
           GoRoute(path: "/alerts", builder: (context, state) => const AlertsScreen()),
           GoRoute(path: "/profile", builder: (context, state) => const ProfileScreen()),
@@ -99,35 +100,44 @@ class _EmployeeVoiceAppState extends State<EmployeeVoiceApp> {
   }
 }
 
-class AppShell extends StatelessWidget {
+class AppShell extends StatefulWidget {
   const AppShell({super.key, required this.child});
   final Widget child;
 
-  int _index(String location) {
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  int _index = 0;
+
+  int? _tab(String location) {
+    if (location.startsWith("/feed") || location.startsWith("/compose") || location.startsWith("/posts/")) return 0;
     if (location.startsWith("/polls")) return 1;
-    if (location.startsWith("/involved")) return 2;
-    if (location.startsWith("/alerts")) return 3;
+    if (location.startsWith("/state") || location.startsWith("/explore")) return 2;
+    if (location.startsWith("/involved")) return 3;
     if (location.startsWith("/profile") || location.startsWith("/verification")) return 4;
-    return 0;
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
-    final index = _index(location);
+    final matched = _tab(location);
+    if (matched != null) _index = matched;
     return Scaffold(
-      body: child,
+      body: widget.child,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
+        selectedIndex: _index,
         onDestinationSelected: (value) {
-          const paths = ["/feed", "/polls", "/involved", "/alerts", "/profile"];
+          const paths = ["/feed", "/polls", "/state", "/involved", "/profile"];
           context.go(paths[value]);
         },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.forum_outlined), label: "Feed"),
           NavigationDestination(icon: Icon(Icons.how_to_vote_outlined), label: "Polls"),
+          NavigationDestination(icon: Icon(Icons.map_outlined), label: "My state"),
           NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined), label: "Get involved"),
-          NavigationDestination(icon: Icon(Icons.notifications_outlined), label: "Alerts"),
           NavigationDestination(icon: Icon(Icons.person_outline), label: "Profile"),
         ],
       ),

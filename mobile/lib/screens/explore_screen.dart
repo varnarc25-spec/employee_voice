@@ -12,7 +12,9 @@ const _sections = <(String, String)>[
 ];
 
 class ExploreScreen extends StatefulWidget {
-  const ExploreScreen({super.key});
+  const ExploreScreen({super.key, this.mine = false});
+
+  final bool mine;
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
@@ -24,6 +26,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   bool _loading = true;
   String? _error;
   String? _stateName;
+  String? _schemeUrl;
   int _total = 0;
   List<Map<String, dynamic>> _items = [];
   final _search = TextEditingController();
@@ -49,14 +52,24 @@ class _ExploreScreenState extends State<ExploreScreen> {
     try {
       final query = Uri(path: "/api/v1/me/explore", queryParameters: {
         "section": _section,
-        if (_allStates) "scope": "all",
+        if (_allStates && !widget.mine) "scope": "all",
         if (_search.text.trim().isNotEmpty) "q": _search.text.trim(),
         "limit": "50",
       }).query;
       final body = await state.client.get("/api/v1/me/explore?$query", bearer: state.access);
+      String? schemeUrl;
+      if (widget.mine) {
+        try {
+          final scheme = await state.client.get("/api/v1/me/scheme-link", bearer: state.access);
+          schemeUrl = scheme["url"] as String?;
+        } catch (_) {
+          schemeUrl = null;
+        }
+      }
       if (!mounted) return;
       setState(() {
         _stateName = body["stateName"] as String?;
+        _schemeUrl = schemeUrl;
         _total = body["total"] as int? ?? 0;
         _items = (body["items"] as List? ?? []).cast<Map<String, dynamic>>();
       });
@@ -69,13 +82,42 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final heading = _section == "facts" || _stateName == null || _stateName!.isEmpty
-        ? "Explore India"
-        : "Explore $_stateName";
+    final stateLabel = _stateName == null || _stateName!.isEmpty ? "My state" : _stateName!;
+    final heading = widget.mine
+        ? "My state"
+        : _section == "facts" || _stateName == null || _stateName!.isEmpty
+            ? "Explore India"
+            : "Explore $_stateName";
     return Scaffold(
-      appBar: AppBar(title: Text(heading)),
+      appBar: AppBar(
+        title: Text(heading),
+        actions: widget.mine ? const [AlertsAction()] : null,
+      ),
       body: Column(
         children: [
+          if (widget.mine && _schemeUrl != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Material(
+                color: const Color(0xFFEEF3F7),
+                borderRadius: BorderRadius.circular(8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => launchUrl(Uri.parse(_schemeUrl!), mode: LaunchMode.externalApplication),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.account_balance_outlined),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text("Schemes for $stateLabel")),
+                        const Icon(Icons.open_in_new, size: 18),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           SizedBox(
             height: 52,
             child: ListView(
@@ -94,7 +136,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       }),
                     ),
                   ),
-                if (_section != "facts")
+                if (_section != "facts" && !widget.mine)
                   FilterChip(
                     label: const Text("All states"),
                     selected: _allStates,

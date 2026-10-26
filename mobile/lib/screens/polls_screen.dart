@@ -51,7 +51,7 @@ class _PollsScreenState extends State<PollsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Polls")),
+      appBar: AppBar(title: const Text("Polls"), actions: const [AlertsAction()]),
       body: StatusBody(
         loading: _loading,
         error: _error,
