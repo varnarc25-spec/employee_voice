@@ -8,6 +8,7 @@ import "screens/explore_screen.dart";
 import "screens/feed_screens.dart";
 import "screens/involved_screen.dart";
 import "screens/polls_screen.dart";
+import "screens/tax_info_screen.dart";
 
 class AppScope extends InheritedNotifier<AppState> {
   const AppScope({required AppState state, required super.child, super.key}) : super(notifier: state);
@@ -58,6 +59,7 @@ class _EmployeeVoiceAppState extends State<EmployeeVoiceApp> {
             path: "/posts/:id",
             builder: (context, state) => PostScreen(postId: state.pathParameters["id"]!),
           ),
+          GoRoute(path: "/tax", builder: (context, state) => const TaxInfoScreen()),
           GoRoute(path: "/polls", builder: (context, state) => const PollsScreen()),
           GoRoute(path: "/state", builder: (context, state) => const ExploreScreen(mine: true)),
           GoRoute(path: "/involved", builder: (context, state) => const InvolvedScreen()),
@@ -113,9 +115,10 @@ class _AppShellState extends State<AppShell> {
 
   int? _tab(String location) {
     if (location.startsWith("/feed") || location.startsWith("/compose") || location.startsWith("/posts/")) return 0;
-    if (location.startsWith("/polls")) return 1;
+    if (location.startsWith("/tax")) return 1;
     if (location.startsWith("/state") || location.startsWith("/explore")) return 2;
-    if (location.startsWith("/profile") || location.startsWith("/verification")) return 3;
+    if (location.startsWith("/polls")) return 3;
+    if (location.startsWith("/profile") || location.startsWith("/verification")) return 4;
     return null;
   }
 
@@ -129,13 +132,14 @@ class _AppShellState extends State<AppShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (value) {
-          const paths = ["/feed", "/polls", "/state", "/profile"];
+          const paths = ["/feed", "/tax", "/state", "/polls", "/profile"];
           context.go(paths[value]);
         },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.forum_outlined), label: "Feed"),
-          NavigationDestination(icon: Icon(Icons.how_to_vote_outlined), label: "Polls"),
+          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: "Tax Info"),
           NavigationDestination(icon: Icon(Icons.map_outlined), label: "My state"),
+          NavigationDestination(icon: Icon(Icons.how_to_vote_outlined), label: "Poll"),
           NavigationDestination(icon: Icon(Icons.person_outline), label: "Profile"),
         ],
       ),
