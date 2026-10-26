@@ -1738,6 +1738,11 @@ CREATE TABLE IF NOT EXISTS civic_budgets (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS ix_civic_budgets_year_type ON civic_budgets (state_lgd_code, fiscal_year, budget_type) WHERE publication_status = 'published';
 
+ALTER TABLE civic_governments ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+ALTER TABLE civic_elections ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+ALTER TABLE civic_parties ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+ALTER TABLE civic_manifestos ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+
 CREATE TABLE IF NOT EXISTS civic_import_jobs (
   id uuid PRIMARY KEY,
   category text NOT NULL,
