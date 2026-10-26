@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { signOut } from "../api";
 import { useSession } from "../stores/session";
@@ -11,8 +11,20 @@ const session = useSession();
 const router = useRouter();
 const route = useRoute();
 const expanded = ref<Record<string, boolean>>({});
+const accountOpen = ref(false);
 
-onMounted(() => session.load());
+function closeAccount(event: MouseEvent): void {
+  const target = event.target;
+  if (!(target instanceof Node)) return;
+  if (target instanceof Element && target.closest(".account-menu")) return;
+  accountOpen.value = false;
+}
+
+onMounted(() => {
+  session.load();
+  document.addEventListener("click", closeAccount);
+});
+onBeforeUnmount(() => document.removeEventListener("click", closeAccount));
 
 const groups = computed<NavGroup[]>(() => {
   const all: NavGroup[] = [
@@ -57,7 +69,10 @@ const groups = computed<NavGroup[]>(() => {
     {
       id: "access",
       label: "Users & access",
-      items: [{ to: "/audit", label: "Audit logs", show: session.isAdmin }],
+      items: [
+        { to: "/access", label: "Staff and domains", show: session.isAdmin },
+        { to: "/audit", label: "Audit logs", show: session.isAdmin },
+      ],
     },
   ];
   return all
@@ -112,7 +127,12 @@ function toggle(id: string): void {
   expanded.value = next;
 }
 
+watch(() => route.path, () => {
+  accountOpen.value = false;
+});
+
 async function leave(): Promise<void> {
+  accountOpen.value = false;
   await signOut();
   session.reset();
   await router.push("/login");
@@ -124,11 +144,16 @@ async function leave(): Promise<void> {
     <header class="topbar">
       <div class="topbar-inner">
         <div class="brand">Employee Voice Admin</div>
-        <div class="topbar-user">
-          <span class="avatar" aria-hidden="true">{{ initials }}</span>
-          <span>{{ displayName }}</span>
-          <router-link class="signout" to="/password">Reset password</router-link>
-          <button class="signout" type="button" @click="leave">Logout</button>
+        <div class="account-menu">
+          <button class="account-trigger" type="button" :aria-expanded="accountOpen ? 'true' : 'false'" aria-haspopup="menu" @click="accountOpen = !accountOpen">
+            <span class="avatar" aria-hidden="true">{{ initials }}</span>
+            <span>{{ displayName }}</span>
+            <span class="caret" aria-hidden="true">{{ accountOpen ? "▾" : "▸" }}</span>
+          </button>
+          <div v-if="accountOpen" class="account-panel" role="menu">
+            <router-link role="menuitem" to="/password" @click="accountOpen = false">Reset password</router-link>
+            <button role="menuitem" type="button" @click="leave">Logout</button>
+          </div>
         </div>
       </div>
     </header>

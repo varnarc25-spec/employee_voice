@@ -23,6 +23,7 @@ import ElectionWorkbookView from "./views/ElectionWorkbookView.vue";
 import ElectionStatesView from "./views/ElectionStatesView.vue";
 import SchemeLinksView from "./views/SchemeLinksView.vue";
 import PortalLogosView from "./views/PortalLogosView.vue";
+import AccessView from "./views/AccessView.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -51,6 +52,7 @@ const router = createRouter({
         { path: "announcements", component: AnnouncementsView },
         { path: "privacy", component: PrivacyView },
         { path: "audit", component: AuditView },
+        { path: "access", component: AccessView },
         { path: "consent", component: ConsentView },
         { path: "password", component: ChangePasswordView },
       ],
