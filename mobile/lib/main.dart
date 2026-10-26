@@ -53,7 +53,10 @@ class _EmployeeVoiceAppState extends State<EmployeeVoiceApp> {
         builder: (context, state, child) => AppShell(child: child),
         routes: [
           GoRoute(path: "/feed", builder: (context, state) => const FeedScreen()),
-          GoRoute(path: "/explore", builder: (context, state) => const ExploreScreen()),
+          GoRoute(
+            path: "/explore",
+            builder: (context, state) => ExploreScreen(initialQuery: state.uri.queryParameters["q"] ?? ""),
+          ),
           GoRoute(path: "/compose", builder: (context, state) => const ComposeScreen()),
           GoRoute(
             path: "/posts/:id",

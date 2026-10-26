@@ -6,9 +6,10 @@ class JoinUsAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextButton(
+    return IconButton(
       onPressed: () => context.push("/involved"),
-      child: const Text("Join us"),
+      icon: const Icon(Icons.group_add_outlined),
+      tooltip: "Join us",
     );
   }
 }

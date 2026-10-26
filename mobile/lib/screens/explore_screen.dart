@@ -12,9 +12,10 @@ const _sections = <(String, String)>[
 ];
 
 class ExploreScreen extends StatefulWidget {
-  const ExploreScreen({super.key, this.mine = false});
+  const ExploreScreen({super.key, this.mine = false, this.initialQuery = ""});
 
   final bool mine;
+  final String initialQuery;
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
@@ -29,7 +30,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   String? _schemeUrl;
   int _total = 0;
   List<Map<String, dynamic>> _items = [];
-  final _search = TextEditingController();
+  late final _search = TextEditingController(text: widget.initialQuery);
 
   @override
   void initState() {

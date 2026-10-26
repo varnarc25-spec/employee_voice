@@ -1,6 +1,5 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
-import "package:url_launcher/url_launcher.dart";
 
 import "../core/api_client.dart";
 import "../core/rules.dart";
@@ -29,8 +28,6 @@ class _FeedScreenState extends State<FeedScreen> {
   bool _loading = true;
   String? _error;
   List<Map<String, dynamic>> _items = [];
-  String? _schemeLabel;
-  String? _schemeUrl;
 
   @override
   void initState() {
@@ -48,24 +45,7 @@ class _FeedScreenState extends State<FeedScreen> {
       final query = _category == null ? "" : "?category=$_category";
       final body = await state.client.get("/api/v1/posts$query", bearer: state.access);
       final items = (body["items"] as List? ?? []).cast<Map<String, dynamic>>();
-      String? schemeLabel;
-      String? schemeUrl;
-      try {
-        final scheme = await state.client.get("/api/v1/me/scheme-link", bearer: state.access);
-        final stateName = scheme["stateName"] as String?;
-        schemeUrl = scheme["url"] as String?;
-        schemeLabel = stateName == null || stateName.isEmpty ? "Government schemes" : "Schemes for $stateName";
-      } catch (_) {
-        schemeLabel = null;
-        schemeUrl = null;
-      }
-      if (mounted) {
-        setState(() {
-          _items = items;
-          _schemeLabel = schemeLabel;
-          _schemeUrl = schemeUrl;
-        });
-      }
+      if (mounted) setState(() => _items = items);
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
     } finally {
@@ -77,7 +57,29 @@ class _FeedScreenState extends State<FeedScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Image(image: AssetImage("assets/brand/logo.png"), height: 40, fit: BoxFit.contain, semanticLabel: "Employee Voice India"),
+        toolbarHeight: 64,
+        leading: const Padding(
+          padding: EdgeInsets.only(left: 12),
+          child: Image(image: AssetImage("assets/brand/logo.png"), height: 36, fit: BoxFit.contain, semanticLabel: "Employee Voice India"),
+        ),
+        leadingWidth: 52,
+        titleSpacing: 4,
+        title: TextField(
+          textInputAction: TextInputAction.search,
+          decoration: InputDecoration(
+            hintText: "Explore India",
+            prefixIcon: const Icon(Icons.search),
+            isDense: true,
+            filled: true,
+            fillColor: const Color(0xFFEEF3F7),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+            contentPadding: const EdgeInsets.symmetric(vertical: 8),
+          ),
+          onSubmitted: (value) {
+            final query = value.trim();
+            context.push(query.isEmpty ? "/explore" : "/explore?q=${Uri.encodeQueryComponent(query)}");
+          },
+        ),
         actions: [
           IconButton(onPressed: () => context.go("/guidelines"), icon: const Icon(Icons.menu_book_outlined), tooltip: "Guidelines"),
           const JoinUsAction(),
@@ -91,52 +93,6 @@ class _FeedScreenState extends State<FeedScreen> {
       ),
       body: Column(
         children: [
-          const Padding(padding: EdgeInsets.fromLTRB(16, 12, 16, 0), child: NoticeBanner("Peers see your display name. Moderators and server operators can still access account data.")),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Material(
-              color: const Color(0xFFEEF3F7),
-              borderRadius: BorderRadius.circular(8),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: () => context.push("/explore"),
-                child: const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      Icon(Icons.travel_explore_outlined),
-                      SizedBox(width: 12),
-                      Expanded(child: Text("Explore India")),
-                      Icon(Icons.chevron_right),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          if (_schemeLabel != null && _schemeUrl != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Material(
-                color: const Color(0xFFEEF3F7),
-                borderRadius: BorderRadius.circular(8),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: () => launchUrl(Uri.parse(_schemeUrl!), mode: LaunchMode.externalApplication),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.account_balance_outlined),
-                        const SizedBox(width: 12),
-                        Expanded(child: Text(_schemeLabel!)),
-                        const Icon(Icons.open_in_new, size: 18),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
           SizedBox(
             height: 52,
             child: ListView(
